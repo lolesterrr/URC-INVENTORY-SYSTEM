@@ -58,14 +58,8 @@ export default function DashboardView({
       });
       return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }
-    // Default dynamic distribution if hardware array is empty or loading
-    return [
-      { name: 'Laptop', value: stats?.totalHardwareCount ? Math.max(1, Math.floor(stats.totalHardwareCount * 0.4)) : 1 },
-      { name: 'Desktop', value: stats?.totalHardwareCount ? Math.max(1, Math.floor(stats.totalHardwareCount * 0.2)) : 1 },
-      { name: 'Switch', value: stats?.totalHardwareCount ? Math.max(1, Math.floor(stats.totalHardwareCount * 0.2)) : 1 },
-      { name: 'Router', value: stats?.totalHardwareCount ? Math.max(1, Math.floor(stats.totalHardwareCount * 0.2)) : 1 },
-    ];
-  }, [hardware, stats?.totalHardwareCount]);
+    return [];
+  }, [hardware]);
 
   // Dynamically calculated real software seat deployments from the database
   const softwareSeatsData = useMemo(() => {
@@ -79,12 +73,7 @@ export default function DashboardView({
         };
       });
     }
-    return [
-      { name: 'Windows 11', Active: 215, Total: 250 },
-      { name: 'ArcGIS', Active: 12, Total: 15 },
-      { name: 'Oracle DB', Active: 5, Total: 5 },
-      { name: 'Office 365', Active: 295, Total: 300 },
-    ];
+    return [];
   }, [software]);
 
   return (

@@ -252,20 +252,6 @@ const INITIAL_DB = {
 // Database state
 let db = { ...INITIAL_DB };
 
-// Load DB from File
-const loadDb = () => {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const fileContent = fs.readFileSync(DB_FILE, 'utf-8');
-      db = JSON.parse(fileContent);
-    } else {
-      saveDb();
-    }
-  } catch (err) {
-    console.error('Failed to load local DB:', err);
-  }
-};
-
 // Save DB to File
 const saveDb = () => {
   try {
@@ -274,6 +260,30 @@ const saveDb = () => {
     console.error('Failed to save local DB:', err);
   }
 };
+
+// Load DB from File
+const loadDb = () => {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const fileContent = fs.readFileSync(DB_FILE, 'utf-8');
+      const parsed = JSON.parse(fileContent);
+      db = {
+        hardware: parsed.hardware || INITIAL_DB.hardware,
+        software: parsed.software && parsed.software.length > 0 ? parsed.software : INITIAL_DB.software,
+        serverComponents: parsed.serverComponents && parsed.serverComponents.length > 0 ? parsed.serverComponents : INITIAL_DB.serverComponents,
+        alerts: parsed.alerts || INITIAL_DB.alerts,
+        auditLogs: parsed.auditLogs || INITIAL_DB.auditLogs,
+      };
+    } else {
+      saveDb();
+    }
+  } catch (err) {
+    console.error('Failed to load local DB:', err);
+  }
+};
+
+// Initialize DB from file immediately on startup
+loadDb();
 
 // Lazy initialization of Gemini API
 const getGeminiClient = () => {

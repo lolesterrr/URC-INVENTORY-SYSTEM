@@ -17,7 +17,7 @@
       "category": "Desktop",
       "name": "DESKTOP COMPUTER (ELITEDESK)",
       "assignee": "Kajuma M Benon",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -39,7 +39,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP PRO BOOK 440 G10)",
       "assignee": "Unassigned (MD Office)",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -61,7 +61,7 @@
       "category": "Other",
       "name": "IPAD PRO (A2837)",
       "assignee": "Unassigned (MD Office)",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -83,7 +83,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Unassigned (MD Office)",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -105,7 +105,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Marion Kabahuma",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -127,7 +127,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Nakiyingi Josephine",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -149,7 +149,7 @@
       "category": "Laptop",
       "name": "LAPTOP (OMEN)",
       "assignee": "Linonn John Ssengendo",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -171,7 +171,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP ELITE BOOK 8G1114)",
       "assignee": "Kahandi E. Nelson",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2026-01-01"
@@ -193,7 +193,7 @@
       "category": "Laptop",
       "name": "LAPTOP (LENOVO)",
       "assignee": "Mr Okanang Patrick",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -215,7 +215,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP)",
       "assignee": "Mutiniisa Bamutana J",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -237,7 +237,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Nangobi Angela",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -259,7 +259,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP)",
       "assignee": "Consolate Muber",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2013-01-01"
@@ -281,7 +281,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP Elite Desk)",
       "assignee": "Obsulte formerly Maliza",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -303,7 +303,7 @@
       "category": "Desktop",
       "name": "DESKTOP (DELL OPTILEX 380)",
       "assignee": "AWEKO JUDITH",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2010-01-01"
@@ -325,7 +325,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP)",
       "assignee": "Kiiza Paskazia",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2018-01-01"
@@ -347,7 +347,7 @@
       "category": "Laptop",
       "name": "LAPTOP (LENOVO)",
       "assignee": "Nantenza Robinah",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -369,7 +369,7 @@
       "category": "Laptop",
       "name": "LAPTOP (DELL OPTILEX 3020)",
       "assignee": "Edmond Mirimo",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -391,7 +391,7 @@
       "category": "Laptop",
       "name": "LAPTOP (Lenovo)",
       "assignee": "HR Pool",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2010-01-01"
@@ -413,7 +413,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP Elite Book AP6KIAV)",
       "assignee": "Businge Richard",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -435,7 +435,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE BOOK)",
       "assignee": "Businge Richard",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -457,7 +457,7 @@
       "category": "Desktop",
       "name": "DESKTOP (DELL OPTIPLEX 7090)",
       "assignee": "Nakiwu Rehema",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -479,7 +479,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP ELITE BOOK)",
       "assignee": "Twaha Kabuye",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -501,7 +501,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP ProBook 450 G8)",
       "assignee": "Joseph OKIROR",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -523,7 +523,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Grace Opoka",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -545,7 +545,7 @@
       "category": "Laptop",
       "name": "LAPTOP (Lenovo)",
       "assignee": "Grace Opoka",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -567,7 +567,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP ELITE BOOK)",
       "assignee": "Majid Opolot",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -589,7 +589,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP ELITE DESK)",
       "assignee": "Phoina Kobusinge(Not return )",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -611,7 +611,7 @@
       "category": "Desktop",
       "name": "DESKTOP (HP ELITE DESK)",
       "assignee": "Provia.N",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -633,7 +633,7 @@
       "category": "Desktop",
       "name": "DESKTOP(FullSet) (Dell)",
       "assignee": "Legal Office Pool",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2015-01-01"
@@ -655,7 +655,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP)",
       "assignee": "Provia.N",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2020-01-01"
@@ -677,7 +677,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP EVO EDITION)",
       "assignee": "Nkuuna Richard",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -699,7 +699,7 @@
       "category": "Laptop",
       "name": "LAPTOP (HP EVO EDITION)",
       "assignee": "Asega Phillip",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -721,7 +721,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PRO TOWER 290)",
       "assignee": "Turyahebwa Godian (UPDF)",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -743,7 +743,7 @@
       "category": "Desktop",
       "name": "Desktop (Dell)",
       "assignee": "Lillian Akello Todo",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -765,7 +765,7 @@
       "category": "Laptop",
       "name": "Laptop (Lenovo)",
       "assignee": "Lillian Akello Todo",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -787,7 +787,7 @@
       "category": "Laptop",
       "name": "Laptop (HP EliteBook 840 G10)",
       "assignee": "Kigambo Johnson",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -809,7 +809,7 @@
       "category": "Desktop",
       "name": "Desktop (HP)",
       "assignee": "Kigambo Johnson",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -831,7 +831,7 @@
       "category": "Desktop",
       "name": "Desktop (HP)",
       "assignee": "Naluwooza Rose",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -853,7 +853,7 @@
       "category": "Desktop",
       "name": "DESKTOP (DELL OPTIPLEX 3010)",
       "assignee": "Amos Mwesigye",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2010-01-01"
@@ -875,7 +875,7 @@
       "category": "Laptop",
       "name": "Laptop (HP)",
       "assignee": "Ssozi Moses",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -897,7 +897,7 @@
       "category": "Desktop",
       "name": "Desktop(FULL SET) (HP ELITE DESK)",
       "assignee": "Muyamba James",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -919,7 +919,7 @@
       "category": "Desktop",
       "name": "Desktop (HP)",
       "assignee": "Mangeni Deo",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2012-01-01"
@@ -941,7 +941,7 @@
       "category": "Laptop",
       "name": "Laptop (Lenovo Core i5)",
       "assignee": "Mataru Agnes",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -963,7 +963,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ALL IN ONE)",
       "assignee": "Nassuna Nina",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -985,7 +985,7 @@
       "category": "Desktop",
       "name": "Desktop (HP EVO EDITION)",
       "assignee": "Paul Muiheirwe T",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -1007,7 +1007,7 @@
       "category": "Laptop",
       "name": "Laptop (Lenovo Core i5)",
       "assignee": "Nakigudde Laeticia",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1029,7 +1029,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE)",
       "assignee": "Nakigudde Laeticia",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1051,7 +1051,7 @@
       "category": "Desktop",
       "name": "Desktop (Dell)",
       "assignee": "Rucewerwa Pamela",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1073,7 +1073,7 @@
       "category": "Desktop",
       "name": "Desktop (HP)",
       "assignee": "Pamela Rucewerwa",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1095,7 +1095,7 @@
       "category": "Laptop",
       "name": "Laptop (HP ELITE BOOK)",
       "assignee": "Pamela Rucewerwa",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2010-01-01"
@@ -1117,7 +1117,7 @@
       "category": "Desktop",
       "name": "Desktop (Dell)",
       "assignee": "Machyo Francis",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1139,7 +1139,7 @@
       "category": "Laptop",
       "name": "Laptop (Dell)",
       "assignee": "Machyo Francis",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1161,7 +1161,7 @@
       "category": "Desktop",
       "name": "Desktop (Dell)",
       "assignee": "Kyogabirwe Reyney",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2010-01-01"
@@ -1183,7 +1183,7 @@
       "category": "Desktop",
       "name": "Desktop (HP EliteBook 8 G11 14)",
       "assignee": "Malinga Sarah",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1205,7 +1205,7 @@
       "category": "Laptop",
       "name": "Laptop (Dell Optiplex Core i7)",
       "assignee": "Erima Peter",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -1227,7 +1227,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Basemera Pelagia",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1249,7 +1249,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Patrick Serubiri",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1271,7 +1271,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PREO)",
       "assignee": "Basemera Pelagia",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1293,7 +1293,7 @@
       "category": "Desktop",
       "name": "Desktop (Dell optiplex 3020)",
       "assignee": "Okore Francis",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2013-01-01"
@@ -1315,7 +1315,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PRO BOOK)",
       "assignee": "Gogo Peter",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2014-01-01"
@@ -1337,7 +1337,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PRO BOOK)",
       "assignee": "Kalemera Joseph",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1359,7 +1359,7 @@
       "category": "Laptop",
       "name": "Laptop (HP PRO)",
       "assignee": "Dinnah Aumo",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2025-01-01"
@@ -1381,7 +1381,7 @@
       "category": "Desktop",
       "name": "Desktop (DELL-OPTIPLEX 7090)",
       "assignee": "Joseph Kalemera",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1403,7 +1403,7 @@
       "category": "Desktop",
       "name": "Desktop (DELL-OPTIPLEX 7090)",
       "assignee": "Erima Peter",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1425,7 +1425,7 @@
       "category": "Laptop",
       "name": "Laptop (HP ELITE BOOK)",
       "assignee": "Sheilla Kamukama",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1447,7 +1447,7 @@
       "category": "Desktop",
       "name": "Desktop (DELL Optlex)",
       "assignee": "Sheilla Kamukama",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2012-01-01"
@@ -1469,7 +1469,7 @@
       "category": "Laptop",
       "name": "Laptop (Lenovo)",
       "assignee": "Opwonya Robert",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1491,7 +1491,7 @@
       "category": "Laptop",
       "name": "Laptop (Lenovo)",
       "assignee": "Kibirige Abraham",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2022-01-01"
@@ -1513,7 +1513,7 @@
       "category": "Laptop",
       "name": "Laptop (HP ELITE BOOK)",
       "assignee": "formerly Ochaki",
-      "cost": 4200000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1535,7 +1535,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Juliet Kenganzi",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1557,7 +1557,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Kenganzi Juliet",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1579,7 +1579,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Andrew Bwira",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1601,7 +1601,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Byenkya Alfred",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1623,7 +1623,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Rwendeire Robert",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1645,7 +1645,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Ndolerire Godfrey",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1667,7 +1667,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Erick Makuyi",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2019-01-01"
@@ -1689,7 +1689,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE DESK)",
       "assignee": "Jlimmy Mukhama",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1711,7 +1711,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PRO)",
       "assignee": "Opio Stephen",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2012-01-01"
@@ -1733,7 +1733,7 @@
       "category": "Desktop",
       "name": "Desktop (HP PRO)",
       "assignee": "Ambrose",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2013-01-01"
@@ -1755,7 +1755,7 @@
       "category": "Desktop",
       "name": "Desktop(FULL SET) (HP ELITE DESK)",
       "assignee": "Peroz Kalshikatwa",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1777,7 +1777,7 @@
       "category": "Desktop",
       "name": "Desktop (HP ELITE OPTIPLEX 3040)",
       "assignee": "Ambrose Mugasha",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2012-01-01"
@@ -1799,7 +1799,7 @@
       "category": "Desktop",
       "name": "Desktop (DELL OPTIPLEX 3020)",
       "assignee": "Paul Esatu",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2023-01-01"
@@ -1821,13 +1821,49 @@
       "category": "Desktop",
       "name": "Desktop (DELL OPTIPLEX 3020)",
       "assignee": "Malaba",
-      "cost": 3500000,
+      "cost": 0,
       "stockLevel": 1,
       "reorderLevel": 0,
       "dateAcquired": "2012-01-01"
     }
   ],
   "software": [
+    {
+      "id": "SW-001",
+      "name": "Windows 11 Enterprise LTSC",
+      "category": "Operating System",
+      "licenseKey": "W11-URC-KEYS-2026-AX89",
+      "seatCapacity": 250,
+      "activeSeats": 215,
+      "expiryDate": "2028-12-31",
+      "subscriptionCost": 12500000,
+      "vendor": "Microsoft East Africa",
+      "status": "Active"
+    },
+    {
+      "id": "SW-002",
+      "name": "ArcGIS Desktop Standard",
+      "category": "GIS",
+      "licenseKey": "GIS-URC-MAP-9876-QW12",
+      "seatCapacity": 15,
+      "activeSeats": 12,
+      "expiryDate": "2026-08-10",
+      "subscriptionCost": 45000000,
+      "vendor": "Esri Uganda",
+      "status": "Expiring Soon"
+    },
+    {
+      "id": "SW-003",
+      "name": "Oracle Database Standard",
+      "category": "Database",
+      "licenseKey": "ORC-URC-DB-5544-TR71",
+      "seatCapacity": 5,
+      "activeSeats": 5,
+      "expiryDate": "2026-07-01",
+      "subscriptionCost": 68000000,
+      "vendor": "Oracle Uganda",
+      "status": "Expired"
+    },
     {
       "id": "SW-004",
       "name": "Microsoft Office 365 E5",
@@ -1841,7 +1877,48 @@
       "status": "Active"
     }
   ],
-  "serverComponents": [],
+  "serverComponents": [
+    {
+      "id": "SC-001",
+      "serverName": "Kampala Main DC - Server 1",
+      "partName": "Samsung 32GB DDR4 RDIMM",
+      "serialNumber": "SN-RAM-SS-001",
+      "category": "RAM",
+      "status": "Active",
+      "quantity": 8,
+      "reorderLevel": 4
+    },
+    {
+      "id": "SC-002",
+      "serverName": "Gulu Station Backup Node",
+      "partName": "Seagate Exos 12TB SATA Enterprise HDD",
+      "serialNumber": "SN-HD-SG-992",
+      "category": "Storage",
+      "status": "Faulty",
+      "quantity": 1,
+      "reorderLevel": 2
+    },
+    {
+      "id": "SC-003",
+      "serverName": "Kampala Main DC - Server 2",
+      "partName": "Intel Xeon Gold 6248R 3.0GHz",
+      "serialNumber": "SN-CPU-IX-102",
+      "category": "CPU",
+      "status": "Active",
+      "quantity": 2,
+      "reorderLevel": 1
+    },
+    {
+      "id": "SC-004",
+      "serverName": "Nalukolongo Workshop Node",
+      "partName": "Dell 750W Hot-Plug PSU",
+      "serialNumber": "SN-PS-DL-402",
+      "category": "Power Supply",
+      "status": "Spare",
+      "quantity": 3,
+      "reorderLevel": 5
+    }
+  ],
   "alerts": [
     {
       "id": "ALT-SC-SC-004-1673",
@@ -1853,7 +1930,7 @@
       "itemId": "SC-004",
       "emailSent": true,
       "emailTo": "it-technician@urc.go.ug",
-      "status": "unread"
+      "status": "resolved"
     },
     {
       "id": "ALT-SC-SC-002-1673",
@@ -1865,7 +1942,7 @@
       "itemId": "SC-002",
       "emailSent": true,
       "emailTo": "it-technician@urc.go.ug",
-      "status": "unread"
+      "status": "resolved"
     },
     {
       "id": "ALT-SW-SW-003-1673",
@@ -1877,7 +1954,7 @@
       "itemId": "SW-003",
       "emailSent": true,
       "emailTo": "it-manager@urc.go.ug",
-      "status": "unread"
+      "status": "resolved"
     },
     {
       "id": "ALT-SW-SW-002-1673",
@@ -1889,7 +1966,7 @@
       "itemId": "SW-002",
       "emailSent": true,
       "emailTo": "it-manager@urc.go.ug",
-      "status": "unread"
+      "status": "resolved"
     },
     {
       "id": "ALT-HW-HW-005-1672",
@@ -1901,10 +1978,74 @@
       "itemId": "HW-005",
       "emailSent": true,
       "emailTo": "it-manager@urc.go.ug",
-      "status": "unread"
+      "status": "resolved"
     }
   ],
   "auditLogs": [
+    {
+      "id": "LOG-05766",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Audit Check",
+      "details": "Manually triggered automated inventory scans and stock checks.",
+      "timestamp": "2026-07-29T08:18:25.766Z"
+    },
+    {
+      "id": "LOG-99338",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"Low Hardware Stock: Ubiquiti UniFi AP AC Pro\"",
+      "timestamp": "2026-07-29T08:18:19.338Z"
+    },
+    {
+      "id": "LOG-97777",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"Expiring License Alert: ArcGIS Desktop Standard\"",
+      "timestamp": "2026-07-29T08:18:17.777Z"
+    },
+    {
+      "id": "LOG-96918",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"EXPIRED License: Oracle Database Standard\"",
+      "timestamp": "2026-07-29T08:18:16.918Z"
+    },
+    {
+      "id": "LOG-95482",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"Low Server Component: Seagate Exos 12TB SATA Enterprise HDD\"",
+      "timestamp": "2026-07-29T08:18:15.482Z"
+    },
+    {
+      "id": "LOG-94048",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"Low Server Component: Dell 750W Hot-Plug PSU\"",
+      "timestamp": "2026-07-29T08:18:14.048Z"
+    },
+    {
+      "id": "LOG-94024",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Resolve Alert",
+      "details": "Resolved alert: \"Low Server Component: Dell 750W Hot-Plug PSU\"",
+      "timestamp": "2026-07-29T08:18:14.024Z"
+    },
+    {
+      "id": "LOG-37034",
+      "user": "kajjabwangulester@gmail.com",
+      "role": "Admin",
+      "action": "Delete Software",
+      "details": "Deleted software license Microsoft Office 365 E5 (SW-004).",
+      "timestamp": "2026-07-29T07:37:17.034Z"
+    },
     {
       "id": "LOG-76610",
       "user": "kajjabwangulester@gmail.com",
