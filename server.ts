@@ -8,16 +8,18 @@ import path from 'path';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { 
-  UserRole, HardwareAsset, SoftwareLicense, ServerComponent, Alert, AuditLog 
-} from './src/types.js';
+  UserRole, User, HardwareAsset, SoftwareLicense, ServerComponent, Alert, AuditLog 
+} from './src/types';
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// Path to JSON DB file
+// Path to JSON DB file as fallback
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'inventory.json');
 
@@ -26,124 +28,38 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Initial Default Mock Data
+// Initialize Firestore on Server
+const firebaseConfigPath = path.join(process.cwd(), 'firebase-applet-config.json');
+let firestoreDb: any = null;
+
+if (fs.existsSync(firebaseConfigPath)) {
+  try {
+    const config = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf-8'));
+    const firebaseApp = getApps().length === 0 ? initializeApp(config) : getApp();
+    firestoreDb = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
+      ? getFirestore(firebaseApp, config.firestoreDatabaseId)
+      : getFirestore(firebaseApp);
+    console.log('🔥 Server connected to Firestore database ID:', config.firestoreDatabaseId);
+  } catch (err) {
+    console.error('Failed to initialize Firestore on server:', err);
+  }
+}
+
+// Load official URC hardware audit records
+const urcAssetsPath = path.join(process.cwd(), 'data', 'urc_hardware_assets.json');
+let officialUrcAssets: HardwareAsset[] = [];
+if (fs.existsSync(urcAssetsPath)) {
+  try {
+    officialUrcAssets = JSON.parse(fs.readFileSync(urcAssetsPath, 'utf-8'));
+    console.log(`📋 Loaded ${officialUrcAssets.length} official URC hardware audit records from file.`);
+  } catch (err) {
+    console.error('Failed to parse urc_hardware_assets.json:', err);
+  }
+}
+
+// Initial Default Database with Official URC Audited Data
 const INITIAL_DB = {
-  hardware: [
-    {
-      id: 'HW-001',
-      user: 'Martha Aturinda (Chief IT Officer)',
-      assetName: 'Dell Latitude 5430 Laptop',
-      yearOfPurchase: '2024',
-      location: 'HQ, Kampala',
-      model: 'Latitude 5430',
-      serialNumber: 'URC-HW-DL-001',
-      engravedNumber: 'URC-ENG-2024-001',
-      operatingSystem: 'Windows 11 Pro 64-bit',
-      ram: '16 GB DDR4',
-      hardDisk: '512 GB NVMe SSD',
-      status: 'In Use',
-      department: 'INFORMATION COMMUNICATION AND TECHNOLOGY',
-      name: 'Dell Latitude 5430 Laptop',
-      assignee: 'Martha Aturinda (Chief IT Officer)',
-      category: 'Laptop',
-      cost: 4500000,
-      stockLevel: 1,
-      reorderLevel: 0
-    },
-    {
-      id: 'HW-002',
-      user: 'N/A (Server Room Core)',
-      assetName: 'Cisco Catalyst 9300 Switch',
-      yearOfPurchase: '2023',
-      location: 'Kampala Main DC - Rack 04',
-      model: 'Catalyst 9300 48-Port',
-      serialNumber: 'URC-HW-CS-102',
-      engravedNumber: 'URC-ENG-2023-089',
-      operatingSystem: 'Cisco IOS-XE 17.6',
-      ram: '16 GB Unified',
-      hardDisk: '16 GB Flash',
-      status: 'In Use',
-      department: 'INFORMATION COMMUNICATION AND TECHNOLOGY',
-      name: 'Cisco Catalyst 9300 Switch',
-      assignee: 'N/A (Server Room Core)',
-      category: 'Switch',
-      ipAddress: '10.100.1.1',
-      portCount: '48 Gigabit PoE+ / 4x 10G SFP+',
-      firmwareVersion: '17.06.03a',
-      cost: 16500000,
-      stockLevel: 1,
-      reorderLevel: 0
-    },
-    {
-      id: 'HW-003',
-      user: 'Unassigned (IT Pool)',
-      assetName: 'HP LaserJet Enterprise Printer',
-      yearOfPurchase: '2025',
-      location: 'HQ, Kampala',
-      model: 'LaserJet M608dn',
-      serialNumber: 'URC-HW-HP-204',
-      engravedNumber: 'URC-ENG-2025-012',
-      operatingSystem: 'HP FutureSmart Firmware 5',
-      ram: '1.5 GB',
-      hardDisk: '500 GB Encrypted Drive',
-      status: 'In Stock',
-      department: 'PROCUREMENT',
-      name: 'HP LaserJet Enterprise Printer',
-      assignee: 'Unassigned (IT Pool)',
-      category: 'Printer',
-      printTechnology: 'Monochrome LaserJet',
-      connectionType: 'Gigabit Ethernet / USB 2.0',
-      ipAddress: '10.100.4.50',
-      cost: 2800000,
-      stockLevel: 5,
-      reorderLevel: 2
-    },
-    {
-      id: 'HW-004',
-      user: 'Finance Team (Under Maintenance)',
-      assetName: 'Lenovo ThinkCentre M70q Desktop',
-      yearOfPurchase: '2024',
-      location: 'Nalukolongo Workshop',
-      model: 'ThinkCentre M70q Gen 3',
-      serialNumber: 'URC-HW-LN-045',
-      engravedNumber: 'URC-ENG-2024-114',
-      operatingSystem: 'Windows 10 Enterprise LTSC',
-      ram: '8 GB DDR4',
-      hardDisk: '256 GB NVMe SSD',
-      status: 'Maintenance',
-      department: 'FINANCE DEPARTMENT',
-      name: 'Lenovo ThinkCentre M70q Desktop',
-      assignee: 'Finance Team (Under Maintenance)',
-      category: 'Desktop',
-      cost: 3500000,
-      stockLevel: 1,
-      reorderLevel: 0
-    },
-    {
-      id: 'HW-005',
-      user: 'Station Superintendent',
-      assetName: 'Ubiquiti UniFi Gateway Router',
-      yearOfPurchase: '2025',
-      location: 'Tororo Station Office',
-      model: 'UniFi Gateway Pro',
-      serialNumber: 'URC-HW-UB-901',
-      engravedNumber: 'URC-ENG-2025-205',
-      operatingSystem: 'UniFi OS v3.2',
-      ram: '256 MB DDR3',
-      hardDisk: '128 MB Flash',
-      status: 'In Stock',
-      department: 'OPERATIONS DEPARTMENT',
-      name: 'Ubiquiti UniFi Gateway Router',
-      assignee: 'Station Superintendent',
-      category: 'Router',
-      ipAddress: '192.168.10.1',
-      portCount: '4x WAN/LAN GbE RJ45',
-      firmwareVersion: 'v3.2.12',
-      cost: 950000,
-      stockLevel: 1,
-      reorderLevel: 3
-    }
-  ] as HardwareAsset[],
+  hardware: officialUrcAssets,
   software: [
     {
       id: 'SW-001',
@@ -151,7 +67,7 @@ const INITIAL_DB = {
       category: 'Operating System',
       licenseKey: 'W11-URC-KEYS-2026-AX89',
       seatCapacity: 250,
-      activeSeats: 215,
+      activeSeats: 83,
       expiryDate: '2028-12-31',
       subscriptionCost: 12500000,
       vendor: 'Microsoft East Africa',
@@ -159,83 +75,18 @@ const INITIAL_DB = {
     },
     {
       id: 'SW-002',
-      name: 'ArcGIS Desktop Standard',
-      category: 'GIS',
-      licenseKey: 'GIS-URC-MAP-9876-QW12',
-      seatCapacity: 15,
-      activeSeats: 12,
-      expiryDate: '2026-08-10', // Expiring soon in our timeline of July 2026!
-      subscriptionCost: 45000000,
-      vendor: 'Esri Uganda',
-      status: 'Expiring Soon'
-    },
-    {
-      id: 'SW-003',
-      name: 'Oracle Database Standard',
-      category: 'Database',
-      licenseKey: 'ORC-URC-DB-5544-TR71',
-      seatCapacity: 5,
-      activeSeats: 5,
-      expiryDate: '2026-07-01', // Expired!
-      subscriptionCost: 68000000,
-      vendor: 'Oracle Uganda',
-      status: 'Expired'
-    },
-    {
-      id: 'SW-004',
       name: 'Microsoft Office 365 E5',
       category: 'Office',
       licenseKey: 'O365-URC-CLD-8822-PL50',
       seatCapacity: 300,
-      activeSeats: 295,
+      activeSeats: 83,
       expiryDate: '2027-03-15',
       subscriptionCost: 25000000,
       vendor: 'Microsoft East Africa',
       status: 'Active'
     }
   ] as SoftwareLicense[],
-  serverComponents: [
-    {
-      id: 'SC-001',
-      serverName: 'Kampala Main DC - Server 1',
-      partName: 'Samsung 32GB DDR4 RDIMM',
-      serialNumber: 'SN-RAM-SS-001',
-      category: 'RAM',
-      status: 'Active',
-      quantity: 8,
-      reorderLevel: 4
-    },
-    {
-      id: 'SC-002',
-      serverName: 'Gulu Station Backup Node',
-      partName: 'Seagate Exos 12TB SATA Enterprise HDD',
-      serialNumber: 'SN-HD-SG-992',
-      category: 'Storage',
-      status: 'Faulty',
-      quantity: 1,
-      reorderLevel: 2
-    },
-    {
-      id: 'SC-003',
-      serverName: 'Kampala Main DC - Server 2',
-      partName: 'Intel Xeon Gold 6248R 3.0GHz',
-      serialNumber: 'SN-CPU-IX-102',
-      category: 'CPU',
-      status: 'Active',
-      quantity: 2,
-      reorderLevel: 1
-    },
-    {
-      id: 'SC-004',
-      serverName: 'Nalukolongo Workshop Node',
-      partName: 'Dell 750W Hot-Plug PSU',
-      serialNumber: 'SN-PS-DL-402',
-      category: 'Power Supply',
-      status: 'Spare',
-      quantity: 3,
-      reorderLevel: 5
-    }
-  ] as ServerComponent[],
+  serverComponents: [] as ServerComponent[],
   alerts: [] as Alert[],
   auditLogs: [
     {
@@ -243,21 +94,122 @@ const INITIAL_DB = {
       user: 'kajjabwangulester@gmail.com',
       role: 'Admin',
       action: 'System Init',
-      details: 'Uganda Railways Corporation IT Inventory System initialized successfully with sample data.',
+      details: 'Uganda Railways Corporation IT Inventory System initialized with 83 official hardware audit records.',
       timestamp: new Date().toISOString()
     }
-  ] as AuditLog[]
+  ] as AuditLog[],
+  users: [] as User[]
 };
 
 // Database state
 let db = { ...INITIAL_DB };
 
-// Save DB to File
+// Save DB to local File fallback
 const saveDb = () => {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed to save local DB:', err);
+  }
+};
+
+// Firestore helper methods
+const saveToFirestore = async (colName: string, id: string, data: any) => {
+  if (!firestoreDb) return;
+  try {
+    await setDoc(doc(firestoreDb, colName, id), data, { merge: true });
+  } catch (err) {
+    console.error(`Firestore write error [${colName}/${id}]:`, err);
+  }
+};
+
+const deleteFromFirestore = async (colName: string, id: string) => {
+  if (!firestoreDb) return;
+  try {
+    await deleteDoc(doc(firestoreDb, colName, id));
+  } catch (err) {
+    console.error(`Firestore delete error [${colName}/${id}]:`, err);
+  }
+};
+
+// Sync database from Firestore Cloud
+const loadFromFirestore = async () => {
+  if (!firestoreDb) return;
+  try {
+    console.log('🔄 Fetching latest inventory data from Firestore...');
+
+    // 1. Hardware - Purge any legacy mock assets and enforce official URC hardware audit records
+    const hwDocs = await getDocs(collection(firestoreDb, 'hardware'));
+    const docsFromFs = hwDocs.empty ? [] : hwDocs.docs.map(d => ({ id: d.id, ...d.data() } as HardwareAsset));
+
+    // Delete non-URC mock items from Firestore
+    for (const d of docsFromFs) {
+      if (d.id && !d.id.startsWith('HW-URC-')) {
+        console.log(`🧹 Purging legacy mock hardware asset from Firestore: ${d.id}`);
+        await deleteFromFirestore('hardware', d.id);
+      }
+    }
+
+    // Map official URC assets with any existing Firestore updates
+    const urcAssetMap = new Map<string, HardwareAsset>();
+    officialUrcAssets.forEach(item => urcAssetMap.set(item.id, item));
+    
+    docsFromFs.forEach(item => {
+      if (item.id && item.id.startsWith('HW-URC-')) {
+        urcAssetMap.set(item.id, { ...urcAssetMap.get(item.id), ...item });
+      }
+    });
+
+    const finalHardwareList = Array.from(urcAssetMap.values());
+    db.hardware = finalHardwareList;
+
+    // Save all official URC records to Firestore
+    for (const item of finalHardwareList) {
+      await saveToFirestore('hardware', item.id, item);
+    }
+
+    // 2. Software
+    const swDocs = await getDocs(collection(firestoreDb, 'software'));
+    if (!swDocs.empty) {
+      db.software = swDocs.docs.map(d => ({ id: d.id, ...d.data() } as SoftwareLicense));
+    } else if (INITIAL_DB.software.length > 0) {
+      console.log('Seeding Software to Firestore...');
+      for (const item of INITIAL_DB.software) {
+        await saveToFirestore('software', item.id, item);
+      }
+    }
+
+    // 3. Server Components
+    const scDocs = await getDocs(collection(firestoreDb, 'serverComponents'));
+    if (!scDocs.empty) {
+      db.serverComponents = scDocs.docs.map(d => ({ id: d.id, ...d.data() } as ServerComponent));
+    } else if (INITIAL_DB.serverComponents.length > 0) {
+      console.log('Seeding Server Components to Firestore...');
+      for (const item of INITIAL_DB.serverComponents) {
+        await saveToFirestore('serverComponents', item.id, item);
+      }
+    }
+
+    // 4. Audit Logs
+    const logDocs = await getDocs(collection(firestoreDb, 'auditLogs'));
+    if (!logDocs.empty) {
+      db.auditLogs = logDocs.docs.map(d => ({ id: d.id, ...d.data() } as AuditLog));
+    } else if (INITIAL_DB.auditLogs.length > 0) {
+      for (const item of INITIAL_DB.auditLogs) {
+        await saveToFirestore('auditLogs', item.id, item);
+      }
+    }
+
+    // 5. Users
+    const userDocs = await getDocs(collection(firestoreDb, 'users'));
+    if (!userDocs.empty) {
+      db.users = userDocs.docs.map(d => ({ id: d.id, ...d.data() } as User));
+    }
+
+    saveDb();
+    console.log(`✅ Loaded ${db.hardware.length} hardware, ${db.software.length} software, ${db.serverComponents.length} server parts, ${db.users.length} users from Firestore.`);
+  } catch (err) {
+    console.error('Failed to sync from Firestore:', err);
   }
 };
 
@@ -273,17 +225,19 @@ const loadDb = () => {
         serverComponents: parsed.serverComponents && parsed.serverComponents.length > 0 ? parsed.serverComponents : INITIAL_DB.serverComponents,
         alerts: parsed.alerts || INITIAL_DB.alerts,
         auditLogs: parsed.auditLogs || INITIAL_DB.auditLogs,
+        users: parsed.users || []
       };
     } else {
       saveDb();
     }
   } catch (err) {
-    console.error('Failed to load local DB:', err);
+    console.error('Failed to load local DB file:', err);
   }
 };
 
-// Initialize DB from file immediately on startup
+// Initialize DB from file immediately on startup and sync Firestore asynchronously
 loadDb();
+loadFromFirestore();
 
 // Lazy initialization of Gemini API
 const getGeminiClient = () => {
@@ -428,12 +382,12 @@ runAlertChecks();
 // Dashboard Analytics API
 app.get('/api/analytics', (req, res) => {
   const hardwareCount = db.hardware.length;
-  const hardwareValue = db.hardware.reduce((acc, h) => acc + h.cost, 0);
+  const hardwareValue = db.hardware.reduce((acc, h) => acc + (Number(h?.cost) || 0), 0);
   
-  const activeLicenses = db.software.filter(s => s.status === 'Active' || s.status === 'Expiring Soon').length;
-  const licenseCost = db.software.reduce((acc, s) => acc + s.subscriptionCost, 0);
+  const activeLicenses = db.software.filter(s => s && (s.status === 'Active' || s.status === 'Expiring Soon')).length;
+  const licenseCost = db.software.reduce((acc, s) => acc + (Number(s?.subscriptionCost) || 0), 0);
   
-  const serverComponents = db.serverComponents.reduce((acc, s) => acc + s.quantity, 0);
+  const serverComponents = db.serverComponents.reduce((acc, s) => acc + (Number(s?.quantity) || 0), 0);
   
   const lowStockAlertCount = db.alerts.filter(a => a.type === 'low_stock' && a.status === 'unread').length;
   const expiringLicensesCount = db.alerts.filter(a => a.type === 'license_expiry' && a.status === 'unread').length;
@@ -531,6 +485,7 @@ app.post('/api/hardware', (req, res) => {
   }
 
   db.hardware.push(asset);
+  saveToFirestore('hardware', asset.id, asset);
   logAudit(userHeader, roleHeader, 'Create Hardware', `Added hardware asset ${asset.assetName} (${asset.id}).`);
   runAlertChecks();
   res.status(201).json(asset);
@@ -566,6 +521,7 @@ app.put('/api/hardware/:id', (req, res) => {
   };
 
   db.hardware[index] = updated;
+  saveToFirestore('hardware', updated.id, updated);
   logAudit(userHeader, roleHeader, 'Update Hardware', `Updated hardware asset ${updated.assetName} (${id}). Status: ${updated.status}.`);
   runAlertChecks();
   res.json(updated);
@@ -586,9 +542,62 @@ app.delete('/api/hardware/:id', (req, res) => {
   }
 
   const deleted = db.hardware.splice(index, 1)[0];
+  deleteFromFirestore('hardware', id);
   logAudit(user, role, 'Delete Hardware', `Deleted hardware asset ${deleted.name} (${id}).`);
   runAlertChecks();
   res.json({ success: true, deletedId: id });
+});
+
+// Bulk Import / Resync URC Physical Audit Inventory
+app.post('/api/hardware/import-urc-audit', async (req, res) => {
+  const user = req.headers['x-user-email'] as string || 'Admin';
+  const role = req.headers['x-user-role'] as string || 'Admin';
+
+  if (officialUrcAssets.length === 0) {
+    return res.status(400).json({ error: 'No URC audit asset data found.' });
+  }
+
+  // Purge any non-URC mock hardware items from DB and Firestore
+  const nonUrcItems = db.hardware.filter(h => !h.id.startsWith('HW-URC-'));
+  for (const item of nonUrcItems) {
+    await deleteFromFirestore('hardware', item.id);
+  }
+
+  // Set hardware exclusively to official URC audit assets and persist each
+  db.hardware = [...officialUrcAssets];
+  for (const asset of officialUrcAssets) {
+    await saveToFirestore('hardware', asset.id, asset);
+  }
+
+  saveDb();
+  logAudit(user, role, 'Bulk Audit Import', `Imported ${officialUrcAssets.length} hardware assets from official URC Physical Audit document.`);
+  runAlertChecks();
+
+  res.json({ success: true, count: officialUrcAssets.length, hardware: db.hardware });
+});
+
+// User Account Management API
+app.get('/api/users', (req, res) => {
+  res.json(db.users);
+});
+
+app.post('/api/users', (req, res) => {
+  const newUser: User = req.body;
+  if (!newUser.id || !newUser.email) {
+    return res.status(400).json({ error: 'User ID and Email are required.' });
+  }
+
+  const existingIndex = db.users.findIndex(u => u.id === newUser.id || u.email.toLowerCase() === newUser.email.toLowerCase());
+  if (existingIndex !== -1) {
+    db.users[existingIndex] = newUser;
+  } else {
+    db.users.push(newUser);
+  }
+
+  saveDb();
+  saveToFirestore('users', newUser.id, newUser);
+  logAudit(newUser.email, newUser.role || 'Admin', 'User Account Persisted', `Registered / saved admin account: ${newUser.name} (${newUser.email}).`);
+  res.status(201).json(newUser);
 });
 
 // Software API
@@ -614,6 +623,7 @@ app.post('/api/software', (req, res) => {
   }
 
   db.software.push(license);
+  saveToFirestore('software', license.id, license);
   logAudit(user, role, 'Create Software', `Registered software license ${license.name} (${license.id}) with ${license.seatCapacity} seats.`);
   runAlertChecks();
   res.status(201).json(license);
@@ -635,6 +645,7 @@ app.put('/api/software/:id', (req, res) => {
 
   const updated = { ...db.software[index], ...req.body };
   db.software[index] = updated;
+  saveToFirestore('software', updated.id, updated);
   logAudit(user, role, 'Update Software', `Updated software license ${updated.name} (${id}). Seat allocation: ${updated.activeSeats}/${updated.seatCapacity}.`);
   runAlertChecks();
   res.json(updated);
@@ -655,6 +666,7 @@ app.delete('/api/software/:id', (req, res) => {
   }
 
   const deleted = db.software.splice(index, 1)[0];
+  deleteFromFirestore('software', id);
   logAudit(user, role, 'Delete Software', `Deleted software license ${deleted.name} (${id}).`);
   runAlertChecks();
   res.json({ success: true, deletedId: id });
@@ -683,6 +695,7 @@ app.post('/api/server-components', (req, res) => {
   }
 
   db.serverComponents.push(comp);
+  saveToFirestore('serverComponents', comp.id, comp);
   logAudit(user, role, 'Create Component', `Added component ${comp.partName} to server ${comp.serverName}.`);
   runAlertChecks();
   res.status(201).json(comp);
@@ -704,6 +717,7 @@ app.put('/api/server-components/:id', (req, res) => {
 
   const updated = { ...db.serverComponents[index], ...req.body };
   db.serverComponents[index] = updated;
+  saveToFirestore('serverComponents', updated.id, updated);
   logAudit(user, role, 'Update Component', `Updated component ${updated.partName} on ${updated.serverName}. Status: ${updated.status}.`);
   runAlertChecks();
   res.json(updated);
@@ -724,6 +738,7 @@ app.delete('/api/server-components/:id', (req, res) => {
   }
 
   const deleted = db.serverComponents.splice(index, 1)[0];
+  deleteFromFirestore('serverComponents', id);
   logAudit(user, role, 'Delete Component', `Deleted component ${deleted.partName} (${id}) from ${deleted.serverName}.`);
   runAlertChecks();
   res.json({ success: true, deletedId: id });

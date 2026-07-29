@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Mail, Check, BellRing, RefreshCw, AlertTriangle, Clock, Calendar, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { Alert, UserRole } from '../types.js';
+import { Alert, UserRole } from '../types';
 
 interface NotificationCenterProps {
   alerts: Alert[];
@@ -98,7 +98,7 @@ export default function NotificationCenter({
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {new Date(alert.timestamp).toLocaleTimeString()}
+                      {alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString() : '—'}
                     </span>
                   </div>
 

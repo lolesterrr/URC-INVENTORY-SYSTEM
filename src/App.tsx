@@ -10,15 +10,15 @@ import {
 } from 'lucide-react';
 import { 
   UserRole, User, HardwareAsset, SoftwareLicense, ServerComponent, Alert, AuditLog, DashboardStats 
-} from './types.js';
+} from './types';
 
 // Import our beautiful custom sub-views
-import DashboardView from './components/DashboardView.jsx';
-import InventoryTables from './components/InventoryTables.jsx';
-import BarcodeScanner from './components/BarcodeScanner.jsx';
-import NotificationCenter from './components/NotificationCenter.jsx';
-import AICopilot from './components/AICopilot.jsx';
-import HelpGuide from './components/HelpGuide.jsx';
+import DashboardView from './components/DashboardView';
+import InventoryTables from './components/InventoryTables';
+import BarcodeScanner from './components/BarcodeScanner';
+import NotificationCenter from './components/NotificationCenter';
+import AICopilot from './components/AICopilot';
+import HelpGuide from './components/HelpGuide';
 
 // System Administrator Accounts
 const PRESET_USERS: User[] = [
@@ -127,7 +127,7 @@ export default function App() {
     localStorage.setItem('urc_logged_in', 'false');
   };
 
-  const handleCreateAccount = (name: string, email: string, password: string) => {
+  const handleCreateAccount = async (name: string, email: string, password: string) => {
     const newUser: User = {
       id: `u-admin-${Date.now()}`,
       name: name.includes('Admin') ? name : `${name} (System Admin)`,
@@ -140,6 +140,18 @@ export default function App() {
     setCustomUsers(updated);
     localStorage.setItem('urc_custom_users', JSON.stringify(updated));
     handleLoginUser(newUser);
+
+    // Save user to Firestore Cloud DB
+    try {
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      });
+    } catch (err) {
+      console.error('Failed to save admin user to cloud database:', err);
+    }
+
     // Reset fields
     setRegName('');
     setRegEmail('');
@@ -162,13 +174,14 @@ export default function App() {
     setIsLoading(true);
     try {
       // Parallelize fetches
-      const [resHw, resSw, resSc, resAlerts, resLogs, resStats] = await Promise.all([
+      const [resHw, resSw, resSc, resAlerts, resLogs, resStats, resUsers] = await Promise.all([
         fetch('/api/hardware'),
         fetch('/api/software'),
         fetch('/api/server-components'),
         fetch('/api/alerts'),
         fetch('/api/audit-logs'),
-        fetch('/api/analytics')
+        fetch('/api/analytics'),
+        fetch('/api/users')
       ]);
 
       const dataHw = await resHw.json();
@@ -177,6 +190,7 @@ export default function App() {
       const dataAlerts = await resAlerts.json();
       const dataLogs = await resLogs.json();
       const dataStats = await resStats.json();
+      const dataUsers = await resUsers.json();
 
       setHardware(dataHw);
       setSoftware(dataSw);
@@ -184,6 +198,18 @@ export default function App() {
       setAlerts(dataAlerts);
       setAuditLogs(dataLogs);
       setStats(dataStats);
+
+      if (Array.isArray(dataUsers) && dataUsers.length > 0) {
+        setCustomUsers(prev => {
+          const merged = [...prev];
+          dataUsers.forEach((u: User) => {
+            if (!merged.some(p => p.id === u.id || p.email.toLowerCase() === u.email.toLowerCase())) {
+              merged.push(u);
+            }
+          });
+          return merged;
+        });
+      }
     } catch (err) {
       console.error('Failed to synchronize with Express database:', err);
     } finally {

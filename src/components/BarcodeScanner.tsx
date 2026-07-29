@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
-import { HardwareAsset, UserRole } from '../types.js';
+import { HardwareAsset, UserRole } from '../types';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];

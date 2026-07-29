@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { 
   Plus, Edit2, Trash2, Search, Filter, Download, Printer, Tag, Eye, Info, X, Check, Laptop, ShieldAlert, RefreshCw
 } from 'lucide-react';
-import { HardwareAsset, SoftwareLicense, ServerComponent, UserRole, URC_DEPARTMENTS } from '../types.js';
+import { HardwareAsset, SoftwareLicense, ServerComponent, UserRole, URC_DEPARTMENTS } from '../types';
 
 interface InventoryTablesProps {
   hardware: HardwareAsset[];
@@ -1135,7 +1135,7 @@ export default function InventoryTables({
                       {s.activeSeats} / <span className="text-slate-400 font-normal">{s.seatCapacity}</span>
                     </td>
                     <td className="px-4 py-2 font-mono text-slate-500 font-medium">{s.expiryDate}</td>
-                    <td className="px-4 py-2 text-slate-800 font-medium">UGX {s.subscriptionCost.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-slate-800 font-medium">UGX {Number(s.subscriptionCost || 0).toLocaleString()}</td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wide ${
                         s.status === 'Active' ? 'bg-green-100 text-green-700' :

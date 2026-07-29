@@ -10,7 +10,7 @@ import {
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell
 } from 'recharts';
-import { DashboardStats, AuditLog, UserRole, HardwareAsset, SoftwareLicense } from '../types.js';
+import { DashboardStats, AuditLog, UserRole, HardwareAsset, SoftwareLicense } from '../types';
 
 import urcLogo from '../assets/images/company_logo.png';
 import ugandaTrain from '../assets/images/uganda_train_1784095821816.jpg';
@@ -144,7 +144,7 @@ export default function DashboardView({
                 {stats ? stats.totalHardwareCount : '—'} <span className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider">Assets</span>
               </h3>
               <p className="text-[11px] text-slate-500 mt-2">
-                Valuation: <span className="text-slate-950 font-mono font-bold">UGX {stats ? stats.totalHardwareValue.toLocaleString() : '—'}</span>
+                Valuation: <span className="text-slate-950 font-mono font-bold">UGX {stats && stats.totalHardwareValue != null ? Number(stats.totalHardwareValue || 0).toLocaleString() : '0'}</span>
               </p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function DashboardView({
                 {stats ? stats.totalActiveLicenses : '—'} <span className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider">Licenses</span>
               </h3>
               <p className="text-[11px] text-slate-500 mt-2">
-                Annual Cost: <span className="text-slate-950 font-mono font-bold">UGX {stats ? stats.totalLicenseCost.toLocaleString() : '—'}</span>
+                Annual Cost: <span className="text-slate-950 font-mono font-bold">UGX {stats && stats.totalLicenseCost != null ? Number(stats.totalLicenseCost || 0).toLocaleString() : '0'}</span>
               </p>
             </div>
           </div>
@@ -301,12 +301,12 @@ export default function DashboardView({
                   {log.action}
                 </span>
                 <span className="text-[9px] font-mono text-slate-400">
-                  {new Date(log.timestamp).toLocaleTimeString()}
+                  {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '—'}
                 </span>
               </div>
               <p className="text-[11px] font-bold text-slate-700 leading-normal">{log.details}</p>
               <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono pt-1">
-                <span>Officer: {log.user.split(' (')[0]}</span>
+                <span>Officer: {log.user ? log.user.split(' (')[0] : 'System'}</span>
                 <span>Role Authorization: {log.role}</span>
               </div>
             </div>
