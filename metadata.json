@@ -1,0 +1,6 @@
+{
+  "name": "URC Uganda Railways IT Inventory System",
+  "description": "An intelligent, slick, and full-stack IT asset, software license, and server component management dashboard for Uganda Railways Corporation. Includes real-time node pings, simulated barcode scanner terminals, automated SMTP stock alerts, and role-based access control.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
