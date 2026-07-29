@@ -86,9 +86,9 @@ export default function App() {
   });
 
   // Login & Registration state
-  const [loginTab, setLoginTab] = useState<'password' | 'quick' | 'register'>('password');
-  const [loginEmail, setLoginEmail] = useState<string>('kajjabwangulester@gmail.com');
-  const [loginPassword, setLoginPassword] = useState<string>('Admin#Lester2026');
+  const [loginTab, setLoginTab] = useState<'password' | 'register'>('password');
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
 
@@ -597,15 +597,7 @@ export default function App() {
                   loginTab === 'password' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Admin Sign-In
-              </button>
-              <button 
-                onClick={() => { setLoginTab('quick'); setLoginError(''); }}
-                className={`flex-1 text-center py-2 text-xs font-bold rounded transition-all ${
-                  loginTab === 'quick' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Select Admin Account
+                Administrator Sign-In
               </button>
               <button 
                 onClick={() => { setLoginTab('register'); setLoginError(''); }}
@@ -613,7 +605,7 @@ export default function App() {
                   loginTab === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Add Admin
+                Register New Admin
               </button>
             </div>
 
@@ -645,7 +637,7 @@ export default function App() {
                       required
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="Enter password"
+                      placeholder="Enter administrator password"
                       className="w-full p-2.5 pr-10 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
                     />
                     <button
@@ -667,62 +659,6 @@ export default function App() {
                   Sign In as Administrator
                 </button>
               </form>
-            ) : loginTab === 'quick' ? (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">System Administrator Accounts</label>
-                  <p className="text-[11px] text-slate-400">Select any system administrator account to sign in immediately.</p>
-                </div>
-                
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                  {PRESET_USERS.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleLoginUser(user)}
-                      className="w-full p-3 border border-slate-200 rounded-lg hover:border-amber-500 hover:bg-amber-50/40 transition-all flex items-center justify-between text-left group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                          {user.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800 group-hover:text-slate-950">{user.name}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">{user.email}</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded uppercase tracking-wider border border-amber-200 shrink-0">
-                        ADMIN
-                      </span>
-                    </button>
-                  ))}
-                  
-                  {customUsers.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-200 mt-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase font-mono tracking-wider">Custom Admin Accounts</p>
-                      {customUsers.map((user) => (
-                        <button
-                          key={user.id}
-                          onClick={() => handleLoginUser(user)}
-                          className="w-full p-3 border border-slate-200 rounded-lg hover:border-amber-500 hover:bg-amber-50/40 transition-all flex items-center justify-between text-left group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                              {user.name.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-800 group-hover:text-slate-950">{user.name}</p>
-                              <p className="text-[10px] text-slate-500 font-mono">{user.email}</p>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded uppercase tracking-wider border border-amber-200 shrink-0">
-                            ADMIN
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
             ) : (
               <form 
                 onSubmit={(e) => {
