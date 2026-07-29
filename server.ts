@@ -138,33 +138,23 @@ const loadFromFirestore = async () => {
   try {
     console.log('🔄 Fetching latest inventory data from Firestore...');
 
-    // 1. Hardware - Purge any legacy mock assets and enforce official URC hardware audit records
+    // 1. Hardware - Completely replace all existing hardware with the newly provided official URC audit records
     const hwDocs = await getDocs(collection(firestoreDb, 'hardware'));
     const docsFromFs = hwDocs.empty ? [] : hwDocs.docs.map(d => ({ id: d.id, ...d.data() } as HardwareAsset));
 
-    // Delete non-URC mock items from Firestore
+    // Delete any old hardware asset in Firestore that is not part of the new 82 official assets
+    const validUrcIds = new Set(officialUrcAssets.map(a => a.id));
     for (const d of docsFromFs) {
-      if (d.id && !d.id.startsWith('HW-URC-')) {
-        console.log(`🧹 Purging legacy mock hardware asset from Firestore: ${d.id}`);
+      if (d.id && !validUrcIds.has(d.id)) {
+        console.log(`🧹 Purging outdated hardware asset from Firestore: ${d.id}`);
         await deleteFromFirestore('hardware', d.id);
       }
     }
 
-    // Map official URC assets with any existing Firestore updates
-    const urcAssetMap = new Map<string, HardwareAsset>();
-    officialUrcAssets.forEach(item => urcAssetMap.set(item.id, item));
-    
-    docsFromFs.forEach(item => {
-      if (item.id && item.id.startsWith('HW-URC-')) {
-        urcAssetMap.set(item.id, { ...urcAssetMap.get(item.id), ...item });
-      }
-    });
-
-    const finalHardwareList = Array.from(urcAssetMap.values());
-    db.hardware = finalHardwareList;
+    db.hardware = [...officialUrcAssets];
 
     // Save all official URC records to Firestore
-    for (const item of finalHardwareList) {
+    for (const item of officialUrcAssets) {
       await saveToFirestore('hardware', item.id, item);
     }
 
