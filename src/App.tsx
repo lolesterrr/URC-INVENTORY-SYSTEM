@@ -29,30 +29,6 @@ const PRESET_USERS: User[] = [
     password: 'Admin#Lester2026', 
     role: UserRole.ADMIN,
     department: 'INFORMATION COMMUNICATION AND TECHNOLOGY'
-  },
-  { 
-    id: 'u-2', 
-    name: 'Ahmad Mukasa (IT Administrator)', 
-    email: 'mukasa.ahmad@urc.go.ug', 
-    password: 'URC@Ahmad2026', 
-    role: UserRole.ADMIN,
-    department: 'INFORMATION COMMUNICATION AND TECHNOLOGY'
-  },
-  { 
-    id: 'u-3', 
-    name: 'Florence Namara (IT Administrator)', 
-    email: 'namara.f@urc.go.ug', 
-    password: 'URC@Florence2026', 
-    role: UserRole.ADMIN,
-    department: 'INFORMATION COMMUNICATION AND TECHNOLOGY'
-  },
-  { 
-    id: 'u-4', 
-    name: 'Martha Aturinda (Chief IT Officer)', 
-    email: 'aturinda.m@urc.go.ug', 
-    password: 'URC@Martha2026', 
-    role: UserRole.ADMIN,
-    department: 'INFORMATION COMMUNICATION AND TECHNOLOGY'
   }
 ];
 
@@ -76,11 +52,12 @@ export default function App() {
   const allUsers = [...PRESET_USERS, ...customUsers];
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('urc_logged_in') === 'true';
+    // Session state strictly defaults to false on new browser tabs/visits unless active in sessionStorage
+    return sessionStorage.getItem('urc_session_active') === 'true';
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedUserId = localStorage.getItem('urc_current_user_id');
+    const savedUserId = sessionStorage.getItem('urc_current_user_id') || localStorage.getItem('urc_current_user_id');
     const matched = allUsers.find(u => u.id === savedUserId);
     return matched || PRESET_USERS[0];
   });
@@ -101,8 +78,9 @@ export default function App() {
     setCurrentUser(user);
     setIsLoggedIn(true);
     setLoginError('');
-    localStorage.setItem('urc_logged_in', 'true');
-    localStorage.setItem('urc_current_user_id', user.id);
+    sessionStorage.setItem('urc_session_active', 'true');
+    sessionStorage.setItem('urc_current_user_id', user.id);
+    localStorage.removeItem('urc_logged_in'); // Purge legacy auto-login
   };
 
   const handlePasswordLogin = (e: React.FormEvent) => {
@@ -124,7 +102,10 @@ export default function App() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    localStorage.setItem('urc_logged_in', 'false');
+    sessionStorage.removeItem('urc_session_active');
+    sessionStorage.removeItem('urc_current_user_id');
+    localStorage.removeItem('urc_logged_in');
+    localStorage.removeItem('urc_current_user_id');
   };
 
   const handleCreateAccount = async (name: string, email: string, password: string) => {
@@ -988,16 +969,25 @@ export default function App() {
               <span className="font-extrabold text-slate-800 uppercase tracking-tight">{currentUser.role}</span>
             </div>
 
-            {/* Active Administrator Indicator */}
-            <button
-              onClick={() => navigateToTab('profile')}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 rounded-lg p-1.5 px-3 border border-slate-200 transition-colors cursor-pointer"
-              title="View Active Administrator Profile"
-            >
-              <UserIcon className="h-3.5 w-3.5 text-amber-600" />
-              <span className="text-xs font-bold text-slate-800">{currentUser.name.split(' (')[0]}</span>
-              <span className="text-[9px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">Admin</span>
-            </button>
+            {/* Active Administrator Indicator & Sign Out */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => navigateToTab('profile')}
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 rounded-lg p-1.5 px-3 border border-slate-200 transition-colors cursor-pointer"
+                title="View Active Administrator Profile"
+              >
+                <UserIcon className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-xs font-bold text-slate-800">{currentUser.name.split(' (')[0]}</span>
+                <span className="text-[9px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">Admin</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold font-mono transition-colors cursor-pointer"
+                title="Sign Out of Session"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </header>
 
