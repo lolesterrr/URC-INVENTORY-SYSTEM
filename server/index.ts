@@ -8,6 +8,7 @@ import { openDatabase } from './db';
 import { createApp } from './app';
 import { purgeExpiredSessions } from './auth/session';
 import { runAlertChecks } from './services/alerts';
+import { BackupService, pidFileFor } from './services/backup';
 
 const HOUR_MS = 3_600_000;
 
@@ -15,9 +16,13 @@ async function main() {
   const config = loadConfig();
   const production = config.env === 'production';
   const db = openDatabase(config.dbFile);
+  // Lets the restore script detect a running server. A stale file after a crash is harmless.
+  const pidFile = pidFileFor(config.dbFile);
+  fs.writeFileSync(pidFile, String(process.pid));
+  const backups = new BackupService(db, config.backup);
   const sessionOpts = { idleMs: config.sessionIdleMs, maxMs: config.sessionMaxMs, secureCookie: Boolean(config.tls) };
 
-  const app = createApp(db, { ...sessionOpts, production });
+  const app = createApp(db, { ...sessionOpts, production, backups });
 
   if (production) {
     const distPath = path.join(process.cwd(), 'dist');
@@ -32,6 +37,7 @@ async function main() {
   runAlertChecks(db);
   setInterval(() => runAlertChecks(db), 6 * HOUR_MS).unref();
   setInterval(() => purgeExpiredSessions(db, sessionOpts), HOUR_MS).unref();
+  const stopBackups = backups.startSchedule();
 
   const server = config.tls
     ? https.createServer({ cert: fs.readFileSync(config.tls.certFile), key: fs.readFileSync(config.tls.keyFile) }, app)
@@ -41,11 +47,14 @@ async function main() {
     const scheme = config.tls ? 'https' : 'http';
     console.log(`URC Inventory running at ${scheme}://${config.host}:${config.port} (${config.env})`);
     console.log(`Database: ${config.dbFile}`);
+    console.log(`Backups: ${config.backup.dir}${config.backup.copyDir ? ` (copied to ${config.backup.copyDir})` : ''}, next at ${backups.nextRunAt().toLocaleString()}`);
   });
 
   const shutdown = () => {
+    stopBackups();
     server.close(() => {
       db.$client.close();
+      fs.rmSync(pidFile, { force: true });
       process.exit(0);
     });
   };

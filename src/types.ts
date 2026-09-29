@@ -16,7 +16,8 @@ export type Permission =
   | 'assets:delete'
   | 'alerts:manage'
   | 'audit:read'
-  | 'users:manage';
+  | 'users:manage'
+  | 'backups:manage';
 
 /** The signed-in user, as returned by /api/auth/me. */
 export interface User {
@@ -39,6 +40,20 @@ export interface ManagedUser {
   locked: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+}
+
+/** Response of GET /api/backups (Admin only). */
+export interface BackupStatus {
+  backups: { name: string; sizeBytes: number; createdAt: string; copied: boolean }[];
+  last: { ok: boolean; name: string | null; finishedAt: string; error: string | null; copyError: string | null } | null;
+  running: boolean;
+  settings: {
+    directory: string;
+    copyDirectory: string | null;
+    hour: number;
+    retention: { daily: number; weekly: number; monthly: number };
+  };
+  nextRunAt: string;
 }
 
 /** Roles that may create, edit and archive inventory records. */

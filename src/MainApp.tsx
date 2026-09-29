@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileSpreadsheet, ScanLine, BellRing, BookOpen,
-  Menu, X, User as UserIcon, Shield, Info, RefreshCw, Layers, Users, KeyRound
+  Menu, X, User as UserIcon, Shield, Info, RefreshCw, Layers, Users, KeyRound, DatabaseBackup
 } from 'lucide-react';
 import {
   UserRole, User, HardwareAsset, SoftwareLicense, ServerComponent, Alert, AuditLog, DashboardStats, Permission
@@ -19,6 +19,7 @@ import BarcodeScanner from './components/BarcodeScanner';
 import NotificationCenter from './components/NotificationCenter';
 import HelpGuide from './components/HelpGuide';
 import UserManagement from './components/UserManagement';
+import BackupManagement from './components/BackupManagement';
 import ChangePasswordForm from './components/ChangePasswordForm';
 
 import urcLogo from './assets/images/company_logo.png';
@@ -31,6 +32,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   'alerts:manage': 'Resolve alerts and run inventory checks',
   'audit:read': 'View the change history',
   'users:manage': 'Manage user accounts',
+  'backups:manage': 'Run and check database backups',
 };
 
 interface MainAppProps {
@@ -310,6 +312,10 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
         return currentUser.permissions.includes('users:manage')
           ? <UserManagement currentUserId={currentUser.id} />
           : <div>You do not have access to this page.</div>;
+      case 'backups':
+        return currentUser.permissions.includes('backups:manage')
+          ? <BackupManagement />
+          : <div>You do not have access to this page.</div>;
       case 'docs':
         return <HelpGuide />;
       case 'profile':
@@ -540,6 +546,21 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
                   >
                     <Users className="h-4 w-4 shrink-0" />
                     User Accounts
+                  </button>
+                )}
+
+                {currentUser.permissions.includes('backups:manage') && (
+                  <button
+                    id="tab-backups"
+                    onClick={() => { setActiveTab('backups'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-6 py-2 text-xs font-medium transition-all cursor-pointer ${
+                      activeTab === 'backups'
+                        ? 'bg-slate-800 text-yellow-400 border-l-4 border-yellow-500 font-bold'
+                        : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                    }`}
+                  >
+                    <DatabaseBackup className="h-4 w-4 shrink-0" />
+                    Backups
                   </button>
                 )}
 

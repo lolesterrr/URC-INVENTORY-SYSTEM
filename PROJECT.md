@@ -17,7 +17,8 @@ Turn the internship prototype into a production-grade, **self-hosted** IT invent
 | Auth | Server-side sessions (httpOnly, SameSite=Strict cookie), argon2id password hashes, lockout after 5 failures, forced password change, 4 roles. |
 | Audit | `audit_log` table records before and after values. SQLite triggers block UPDATE and DELETE. |
 | AI / cloud | Removed (Firebase, Gemini). |
-| Tests | `tests/api.test.ts`: 16 API tests (auth, roles, validation, audit, import). |
+| Tests | `tests/api.test.ts` (16: auth, roles, validation, audit, import) and `tests/backup.test.ts` (10: retention, backup, second copy, API, restore drill). |
+| Backups | `server/services/backup.ts`: nightly at 02:00 plus catch-up at startup, integrity-checked, 7/4/12 retention, optional second copy, Admin page, `npm run restore`. |
 
 ## 3. Findings: pitfalls and vulnerabilities
 Severity: 🔴 critical · 🟠 high · 🟡 medium
@@ -34,7 +35,7 @@ Severity: 🔴 critical · 🟠 high · 🟡 medium
 | F8 | 🟠 | Inventory data is sent to external services (Firebase, Gemini), which conflicts with the "internal only" goal. | `server.ts`, `src/firebase.ts` | ✅ fixed |
 | F9 | 🟡 | No input validation, rate limiting, security headers (helmet), CSRF protection or HTTPS. | `server.ts` | ✅ validation, rate limit, helmet, SameSite cookie; HTTPS is ready but needs a certificate |
 | F10 | 🟡 | The port is hard-coded (3000). `clean` uses `rm -rf`, which fails on Windows. The package is still named `react-example`. | `server.ts:18`, `package.json` | ✅ fixed |
-| F11 | 🟡 | There is no backup or restore mechanism. | — | ⏳ Phase 3 |
+| F11 | 🟡 | There is no backup or restore mechanism. | — | ✅ fixed (nightly verified backups, retention, restore script) |
 | F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` | ◐ tests added; component split is Phase 4 |
 
 | F13 | 🟠 | `npm audit`: 7 known vulnerabilities (2 high: `nanoid`, `browserslist`; 5 moderate incl. `express`/`qs`). All fixable via `npm audit fix`. | `package-lock.json` | ✅ fixed (4 moderate issues remain, all inside the dev-only drizzle-kit tool) |
@@ -74,14 +75,14 @@ Line-by-line route review and the git-history secret check are still pending (T2
 0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
 1. **Security foundation**: ✅ server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
 2. **Internal database**: ✅ schema, ORM, migration script from `inventory.json`, remove Firebase.
-3. **Backups**: ← *next* scheduled backup, retention, restore script, restore drill.
-4. **Refactor**: split `server.ts` into routes, services and db. Split large components. Add tests.
+3. **Backups**: ✅ scheduled backup, retention, restore script, restore drill.
+4. **Refactor**: ← *next* split `server.ts` into routes, services and db. Split large components. Add tests.
 5. **v1 features**: from the comparison doc.
 6. **Windows deployment**: Windows service, HTTPS, firewall rule, installation runbook (`docs/DEPLOYMENT.md`).
 
 ## 7. Tasks
 ### Active
-- [ ] T5 Phase 3, backups: in-app nightly scheduler using the better-sqlite3 `.backup()` API, `PRAGMA integrity_check`, retention 7/4/12, optional second copy path, Admin "Backup now" button with a list of backups, `scripts/restore.ts`, restore drill test.
+- [ ] T8 Phase 4: split `MainApp.tsx` (~720 lines) and `InventoryTables.tsx` (~2,000 lines) into components under ~400 lines each.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
@@ -91,3 +92,7 @@ Line-by-line route review and the git-history secret check are still pending (T2
 - [x] T1 v1 feature scope frozen: see the Priority column in `docs/FEATURE_COMPARISON.md`.
 - [x] T3 Decisions D2–D7 and the roles table recorded (2026-09-29).
 - [x] T4 Phase 1+2 (2026-09-29): SQLite, Drizzle migrations, auth, roles, user admin UI, append-only audit log, validation, helmet, Express 5, Firebase and Gemini removed, legacy import (82 hardware / 4 software / 4 components verified), 16 tests, production build verified in a browser. The server bundle moved to `dist-server/` so it is no longer served publicly from `dist/`.
+- [x] T5 Phase 3, backups (2026-09-29): in-app nightly scheduler using the better-sqlite3 `.backup()` API, `PRAGMA integrity_check`, retention 7/4/12, optional second copy path, Admin "Backup now" button with a list of backups, `scripts/restore.ts`, restore drill test.
+  - Design: `server/services/backup.ts` (`BackupService`). Files are named `inventory-YYYYMMDD-HHMMSS.db` (local time, safe on Windows), written as `.tmp`, checked, then renamed. Retention keeps the newest backup of each of the last 7 days, 4 ISO weeks and 12 months, applied to both folders. The scheduler runs at `BACKUP_HOUR` (default 2), and at startup it catches up if the newest backup is more than 24 h old. `GET/POST /api/backups` need `backups:manage` (Admin). No download endpoint, because backups contain password hashes.
+  - Restore: `npm run restore -- <file>` with the service stopped. The server writes `server.pid` next to the database and restore refuses while that process is alive. Before overwriting, it checks the backup and saves the current DB as `pre-restore-*.db` in the backup folder.
+  - Verified: 26/26 tests; a production build took a catch-up backup at startup and a manual one through the UI; restore refused while the server was running, then worked once it was stopped, and the server started again on the restored DB.

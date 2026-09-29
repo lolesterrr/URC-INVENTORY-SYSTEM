@@ -20,11 +20,12 @@ React 19 + Vite + Tailwind (`src/`). Express 5 + TypeScript (`server/`). SQLite 
 - `npm install`: install dependencies
 - `npm run dev`: dev server with Vite middleware (port 3000, DB in `./storage`)
 - `npm run lint`: strict `tsc --noEmit`
-- `npm test`: API tests (in-memory DB)
+- `npm test`: API and backup tests (in-memory or temp-folder DBs)
 - `npm run build`, then `npm start`: production build (`dist/`, `dist-server/`) and run
 - `npm run db:generate`: create a migration after editing `server/db/schema.ts`. Never edit an applied migration.
 - `npm run create-user`: create an account interactively (first Admin)
 - `npm run import-json -- <file>`: import a legacy `inventory.json`
+- `npm run restore -- <backup file>`: restore the DB from a backup (service stopped). Backup logic lives in `server/services/backup.ts`.
 
 ## Conventions
 - Every API route declares `requirePermission(...)`. Roles are mapped to permissions in `server/auth/permissions.ts`.

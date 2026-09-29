@@ -10,10 +10,13 @@ import { softwareRouter } from './routes/software';
 import { serverComponentsRouter } from './routes/serverComponents';
 import { alertsRouter } from './routes/alerts';
 import { analyticsRouter, auditLogsRouter } from './routes/reports';
+import { backupsRouter } from './routes/backups';
+import type { BackupService } from './services/backup';
 
 export interface AppOptions extends SessionOptions {
   production: boolean;
   loginRateLimit?: number;
+  backups?: BackupService;
 }
 
 /** Builds the Express app with all API routes. Static/Vite serving is added by the caller. */
@@ -59,6 +62,7 @@ export function createApp(db: DB, opts: AppOptions) {
   api.use('/alerts', alertsRouter(db));
   api.use('/audit-logs', auditLogsRouter(db));
   api.use('/analytics', analyticsRouter(db));
+  if (opts.backups) api.use('/backups', backupsRouter(opts.backups));
   app.use('/api', api);
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found.' }));
