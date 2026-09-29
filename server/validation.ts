@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import { z } from 'zod';
+import { INITIAL_STATES, LIFECYCLE_STATES } from '../shared/lifecycle';
 
 const text = (max = 200) => z.string().trim().max(max);
 const count = z.coerce.number().int().min(0).max(1_000_000);
@@ -28,7 +29,7 @@ export const hardwareFields = z.object({
   operatingSystem: text(100),
   ram: text(50),
   hardDisk: text(50),
-  status: text(50).min(1),
+  condition: text(100),
   department: text(),
   location: text(),
   user: text(),
@@ -47,7 +48,13 @@ export const hardwareFields = z.object({
   printTechnology: text(50),
 }).partial();
 
-export const hardwareCreate = hardwareFields.extend({ id: idSchema });
+// The lifecycle state is set on create only; later changes go through hardwareLifecycle.
+export const hardwareCreate = hardwareFields.extend({ id: idSchema, lifecycleState: z.enum(INITIAL_STATES).optional() });
+
+export const hardwareLifecycle = z.object({
+  to: z.enum(LIFECYCLE_STATES),
+  note: text(500).optional().default(''),
+});
 
 export const softwareFields = z.object({
   name: text().min(1),

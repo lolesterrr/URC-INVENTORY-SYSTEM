@@ -2,11 +2,14 @@ import { Router } from 'express';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { z } from 'zod';
 import type { DB } from '../db';
-import { hardware } from '../db/schema';
+import { auditLog, hardware } from '../db/schema';
+import { can } from '../auth/permissions';
 import { requirePermission } from '../auth/session';
 import { recordAudit } from '../services/audit';
 import { runAlertChecks } from '../services/alerts';
-import { HARDWARE_CATEGORIES, hardwareCreate, hardwareFields, parseBody } from '../validation';
+import { canTransition, LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
+import { HARDWARE_CATEGORIES, hardwareCreate, hardwareFields, hardwareLifecycle, parseBody } from '../validation';
+import { auditToApi } from './reports';
 
 type Row = typeof hardware.$inferSelect;
 type Category = (typeof HARDWARE_CATEGORIES)[number];
@@ -60,6 +63,8 @@ export function hardwareRouter(db: DB) {
     const values = {
       ...cols,
       id: body.id,
+      lifecycleState: body.lifecycleState ?? 'In Stock',
+      lifecycleChangedAt: new Date().toISOString(),
       assetName: cols.assetName,
       category: cols.category ?? detectCategory(cols.assetName, cols.model ?? ''),
       dateAcquired: cols.dateAcquired || new Date().toISOString().slice(0, 10),
@@ -80,6 +85,7 @@ export function hardwareRouter(db: DB) {
   router.put('/:id', requirePermission('assets:write'), (req, res) => {
     const existing = active(String(req.params.id));
     if (!existing) return res.status(404).json({ error: 'Asset not found.' });
+    if (existing.lifecycleState === 'Disposed') return res.status(409).json({ error: 'Disposed assets are read-only.' });
     const body = parseBody(hardwareFields, req.body, res);
     if (!body) return;
     db.update(hardware)
@@ -89,7 +95,7 @@ export function hardwareRouter(db: DB) {
     const updated = active(existing.id)!;
     recordAudit(db, req, {
       action: 'Update Hardware',
-      details: `Updated hardware asset ${updated.assetName} (${updated.id}). Status: ${updated.status}.`,
+      details: `Updated hardware asset ${updated.assetName} (${updated.id}). State: ${updated.lifecycleState}.`,
       entityType: 'hardware',
       entityId: updated.id,
       before: existing,
@@ -97,6 +103,54 @@ export function hardwareRouter(db: DB) {
     });
     runAlertChecks(db);
     res.json(hardwareToApi(updated));
+  });
+
+  // The only way to change a lifecycle state after creation, so every move is checked and audited.
+  router.post('/:id/lifecycle', requirePermission('assets:read'), (req, res) => {
+    const existing = active(String(req.params.id));
+    if (!existing) return res.status(404).json({ error: 'Asset not found.' });
+    const body = parseBody(hardwareLifecycle, req.body, res);
+    if (!body) return;
+    const { to, note } = body;
+    if (!can(req.user!.role, to === 'Disposed' ? 'assets:dispose' : 'assets:write')) {
+      return res.status(403).json({ error: 'Your role does not allow this action.' });
+    }
+    const from = existing.lifecycleState;
+    if (!canTransition(from, to)) {
+      const allowed = LIFECYCLE_TRANSITIONS[from];
+      const hint = allowed.length ? ` Allowed: ${allowed.join(', ')}.` : ' Disposed is final.';
+      return res.status(409).json({ error: `An asset cannot move from ${from} to ${to}.${hint}` });
+    }
+    if (NOTE_REQUIRED.includes(to) && !note) {
+      return res.status(400).json({ error: `Give a reason when moving an asset to ${to}.`, fields: [{ field: 'note', message: 'Required' }] });
+    }
+    const now = new Date().toISOString();
+    db.update(hardware).set({ lifecycleState: to, lifecycleChangedAt: now, updatedAt: now }).where(eq(hardware.id, existing.id)).run();
+    const updated = active(existing.id)!;
+    recordAudit(db, req, {
+      action: 'Lifecycle Change',
+      details: `${updated.assetName} (${updated.id}): ${from} → ${to}.${note ? ` Note: ${note}` : ''}`,
+      entityType: 'hardware',
+      entityId: updated.id,
+      before: { lifecycleState: from },
+      after: { lifecycleState: to, note },
+    });
+    res.json(hardwareToApi(updated));
+  });
+
+  // Per-asset timeline from the append-only audit log, oldest first. Works for archived assets too.
+  router.get('/:id/history', requirePermission('audit:read'), (req, res) => {
+    const id = String(req.params.id);
+    if (!db.select({ id: hardware.id }).from(hardware).where(eq(hardware.id, id)).get()) {
+      return res.status(404).json({ error: 'Asset not found.' });
+    }
+    const rows = db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.entityType, 'hardware'), eq(auditLog.entityId, id)))
+      .orderBy(asc(auditLog.id))
+      .all();
+    res.json(rows.map(auditToApi));
   });
 
   router.delete('/:id', requirePermission('assets:delete'), (req, res) => {

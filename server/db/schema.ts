@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { LIFECYCLE_STATES, type LifecycleState } from '../../shared/lifecycle';
 
 const timestamps = {
   createdAt: text('created_at').notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
@@ -38,6 +39,9 @@ export const sessions = sqliteTable(
   t => [index('sessions_user_idx').on(t.userId)],
 );
 
+// Hardware lifecycle states and allowed moves: shared/lifecycle.ts. Changes go through POST /api/hardware/:id/lifecycle.
+export { LIFECYCLE_STATES, type LifecycleState };
+
 export const hardware = sqliteTable(
   'hardware',
   {
@@ -50,7 +54,10 @@ export const hardware = sqliteTable(
     operatingSystem: text('operating_system').notNull().default(''),
     ram: text('ram').notNull().default(''),
     hardDisk: text('hard_disk').notNull().default(''),
-    status: text('status').notNull().default('In Stock'),
+    lifecycleState: text('lifecycle_state', { enum: LIFECYCLE_STATES }).notNull().default('In Stock'),
+    lifecycleChangedAt: text('lifecycle_changed_at'),
+    /** Free-text condition note, e.g. "Faulty" or "Upgrade to 1TB". */
+    condition: text('condition').notNull().default(''),
     department: text('department').notNull().default(''),
     location: text('location').notNull().default(''),
     assignedTo: text('assigned_to').notNull().default('Unassigned'),
@@ -69,7 +76,11 @@ export const hardware = sqliteTable(
     deletedAt: text('deleted_at'),
     ...timestamps,
   },
-  t => [index('hardware_serial_idx').on(t.serialNumber), index('hardware_department_idx').on(t.department)],
+  t => [
+    index('hardware_serial_idx').on(t.serialNumber),
+    index('hardware_department_idx').on(t.department),
+    index('hardware_lifecycle_idx').on(t.lifecycleState),
+  ],
 );
 
 export const software = sqliteTable('software', {

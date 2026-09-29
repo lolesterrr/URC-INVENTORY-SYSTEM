@@ -9,11 +9,15 @@ import { eq as eqId } from 'drizzle-orm';
 import { z } from 'zod';
 import { loadConfig } from '../server/config';
 import { openDatabase, type DB } from '../server/db';
-import { hardware, serverComponents, software } from '../server/db/schema';
+import { hardware, LIFECYCLE_STATES, serverComponents, software } from '../server/db/schema';
 import { detectCategory } from '../server/routes/hardware';
 import { recordAudit } from '../server/services/audit';
 import { runAlertChecks } from '../server/services/alerts';
+import { legacyStatusToLifecycle } from '../server/services/lifecycle';
 import { componentCreate, hardwareCreate, HARDWARE_CATEGORIES, softwareCreate } from '../server/validation';
+
+// Imported records may already be Disposed, which the create form does not allow.
+const hardwareImport = hardwareCreate.extend({ lifecycleState: z.enum(LIFECYCLE_STATES) });
 
 type Result = { imported: number; skipped: number; invalid: string[] };
 
@@ -55,13 +59,22 @@ export function importLegacy(db: DB, data: Record<string, unknown>) {
   const arr = (v: unknown) => (Array.isArray(v) ? v : []);
   // Legacy category values outside the allowed list become "Other" rather than failing the row.
   const legacyHardware = arr(data.hardware).map(h => {
-    const r = h as Record<string, unknown>;
+    const r = (clean(h) ?? {}) as Record<string, unknown>;
     const cat = r.category as string | undefined;
-    return { ...r, category: cat && (HARDWARE_CATEGORIES as readonly string[]).includes(cat) ? cat : undefined };
+    // A legacy free-text status becomes a lifecycle state plus a condition note (same rules as migration 0002),
+    // unless the file already has them.
+    const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+    const lifecycle = legacyStatusToLifecycle(str(r.status), str(r.user) || str(r.assignee));
+    return {
+      ...r,
+      lifecycleState: r.lifecycleState ?? lifecycle.lifecycleState,
+      condition: str(r.condition) || lifecycle.condition,
+      category: cat && (HARDWARE_CATEGORIES as readonly string[]).includes(cat) ? cat : undefined,
+    };
   });
 
   return db.transaction(tx => {
-    const hw = importRows('hardware', legacyHardware, hardwareCreate, id => Boolean(tx.select({ id: hardware.id }).from(hardware).where(eqId(hardware.id, id)).get()), r => {
+    const hw = importRows('hardware', legacyHardware, hardwareImport, id => Boolean(tx.select({ id: hardware.id }).from(hardware).where(eqId(hardware.id, id)).get()), r => {
       const assetName = r.assetName || r.name || 'Unnamed asset';
       tx.insert(hardware).values({
         ...r,

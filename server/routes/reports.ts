@@ -11,25 +11,28 @@ const tally = <T>(items: T[], key: (i: T) => string, amount: (i: T) => number = 
     return acc;
   }, {});
 
+/** Audit row in the shape the UI expects (before/after parsed from JSON). */
+export function auditToApi(r: typeof auditLog.$inferSelect) {
+  return {
+    id: String(r.id),
+    user: r.username,
+    role: r.role,
+    action: r.action,
+    details: r.details,
+    timestamp: r.timestamp,
+    entityType: r.entityType,
+    entityId: r.entityId,
+    before: r.before ? JSON.parse(r.before) : null,
+    after: r.after ? JSON.parse(r.after) : null,
+  };
+}
+
 export function auditLogsRouter(db: DB) {
   const router = Router();
   router.get('/', requirePermission('audit:read'), (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 5000);
     const rows = db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(limit).all();
-    res.json(
-      rows.map(r => ({
-        id: String(r.id),
-        user: r.username,
-        role: r.role,
-        action: r.action,
-        details: r.details,
-        timestamp: r.timestamp,
-        entityType: r.entityType,
-        entityId: r.entityId,
-        before: r.before ? JSON.parse(r.before) : null,
-        after: r.after ? JSON.parse(r.after) : null,
-      })),
-    );
+    res.json(rows.map(auditToApi));
   });
   return router;
 }

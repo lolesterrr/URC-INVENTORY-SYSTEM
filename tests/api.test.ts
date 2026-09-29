@@ -22,7 +22,7 @@ async function agentFor(role: Role, username = role.toLowerCase().replace(' ', '
   return agent;
 }
 
-const asset = { id: 'HW-T-001', assetName: 'Desktop Computer', model: 'EliteDesk', serialNumber: 'SN1', status: 'In Use' };
+const asset = { id: 'HW-T-001', assetName: 'Desktop Computer', model: 'EliteDesk', serialNumber: 'SN1', lifecycleState: 'Deployed', condition: 'OK' };
 
 describe('authentication', () => {
   it('rejects API access without a session', async () => {
@@ -80,8 +80,8 @@ describe('role permissions', () => {
   it('IT Officer can create, edit and archive assets', async () => {
     const agent = await agentFor('IT Officer');
     await agent.post('/api/hardware').send(asset).expect(201);
-    const updated = await agent.put(`/api/hardware/${asset.id}`).send({ status: 'Maintenance' }).expect(200);
-    expect(updated.body.status).toBe('Maintenance');
+    const updated = await agent.put(`/api/hardware/${asset.id}`).send({ condition: 'Faulty' }).expect(200);
+    expect(updated.body.condition).toBe('Faulty');
     await agent.delete(`/api/hardware/${asset.id}`).expect(200);
     const list = await agent.get('/api/hardware').expect(200);
     expect(list.body).toHaveLength(0);
@@ -94,7 +94,8 @@ describe('role permissions', () => {
     await agent.get('/api/hardware').expect(200);
     await agent.get('/api/audit-logs').expect(200);
     await agent.post('/api/hardware').send({ ...asset, id: 'HW-T-002' }).expect(403);
-    await agent.put(`/api/hardware/${asset.id}`).send({ status: 'Retired' }).expect(403);
+    await agent.put(`/api/hardware/${asset.id}`).send({ condition: 'Faulty' }).expect(403);
+    await agent.post(`/api/hardware/${asset.id}/lifecycle`).send({ to: 'In Repair' }).expect(403);
     await agent.delete(`/api/hardware/${asset.id}`).expect(403);
   });
 
@@ -126,12 +127,12 @@ describe('validation and audit', () => {
   it('records the real signed-in user with before/after values', async () => {
     const agent = await agentFor('IT Officer', 'tech1');
     await agent.post('/api/hardware').send(asset).expect(201);
-    await agent.put(`/api/hardware/${asset.id}`).send({ status: 'Retired' }).expect(200);
+    await agent.put(`/api/hardware/${asset.id}`).send({ condition: 'Faulty' }).expect(200);
     const logs = await agent.get('/api/audit-logs').expect(200);
     const update = logs.body.find((l: { action: string }) => l.action === 'Update Hardware');
     expect(update.user).toBe('tech1');
-    expect(update.before.status).toBe('In Use');
-    expect(update.after.status).toBe('Retired');
+    expect(update.before.condition).toBe('OK');
+    expect(update.after.condition).toBe('Faulty');
   });
 
   it('audit log rows cannot be changed or deleted', async () => {
