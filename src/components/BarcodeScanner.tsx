@@ -5,18 +5,22 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
-import { HardwareAsset, UserRole } from '../types';
+import { LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
+import { HardwareAsset, LifecycleState, UserRole, canEditInventory } from '../types';
+import AssetPassportCard from './AssetPassportCard';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
   currentUserRole: UserRole;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
+  onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
 }
 
 export default function BarcodeScanner({
   hardware,
   currentUserRole,
-  onUpdateHardware
+  onUpdateHardware,
+  onChangeLifecycle,
 }: BarcodeScannerProps) {
   const [selectedMockId, setSelectedMockId] = useState('');
   const [scannedItem, setScannedItem] = useState<HardwareAsset | null>(null);
@@ -25,7 +29,7 @@ export default function BarcodeScanner({
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Field editing state for scanned item
-  const [status, setStatus] = useState<'In Use' | 'In Stock' | 'Maintenance' | 'Retired'>('In Stock');
+  const [state, setState] = useState<LifecycleState>('In Stock');
   const [assignee, setAssignee] = useState('');
   const [location, setLocation] = useState('');
 
@@ -35,8 +39,8 @@ export default function BarcodeScanner({
   // Load editing state when scanned item changes
   useEffect(() => {
     if (scannedItem) {
-      setStatus(scannedItem.status);
-      setAssignee(scannedItem.assignee);
+      setState(scannedItem.lifecycleState);
+      setAssignee(scannedItem.assignee ?? scannedItem.user);
       setLocation(scannedItem.location);
     }
   }, [scannedItem]);
@@ -97,7 +101,7 @@ export default function BarcodeScanner({
     e.preventDefault();
     if (!scannedItem) return;
     
-    if (currentUserRole === UserRole.VIEWER) {
+    if (!canEditInventory(currentUserRole)) {
       alert('Access Denied: Viewers cannot save updates.');
       return;
     }
@@ -106,34 +110,21 @@ export default function BarcodeScanner({
     try {
       const updated: HardwareAsset = {
         ...scannedItem,
-        status,
-        assignee: assignee || 'N/A',
-        location: location || 'HQ, Kampala'
+        // The server reads `user` before its legacy alias `assignee`, so set both.
+        user: assignee.trim(),
+        assignee: assignee.trim(),
+        location: location.trim(),
       };
       await onUpdateHardware(updated);
-      setScannedItem(updated);
+      // State changes have their own audited endpoint.
+      if (state !== scannedItem.lifecycleState) await onChangeLifecycle(scannedItem.id, state, '');
+      setScannedItem({ ...updated, lifecycleState: state });
       setScanMessage(`Successfully saved deployment updates for URC asset ${updated.id}.`);
     } catch (err) {
-      console.error(err);
-      setScanMessage('An error occurred while updating the asset.');
+      setScanMessage(err instanceof Error ? err.message : 'An error occurred while updating the asset.');
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const renderSimpleBarcodeStripes = (id: string) => {
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const bars = [];
-    for (let i = 0; i < 22; i++) {
-      const width = ((hash + i) % 3 === 0) ? 'w-1' : 'w-0.5';
-      bars.push(<div key={i} className={`h-8 bg-slate-900 ${width} mr-0.5`}></div>);
-    }
-    return (
-      <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-200">
-        <div className="flex items-center justify-center bg-white">{bars}</div>
-        <span className="text-[8px] font-mono font-bold tracking-wider text-slate-500 mt-1">{id}</span>
-      </div>
-    );
   };
 
   return (
@@ -256,114 +247,7 @@ export default function BarcodeScanner({
           {scannedItem ? (
             <div className="space-y-3 animate-fade-in">
               
-              {/* Asset passport card */}
-              <div className="p-3 bg-slate-50 rounded border border-slate-100 space-y-2">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-slate-400">
-                      <Laptop className="h-3 w-3" />
-                      <span className="text-[10px] font-mono font-bold text-slate-800">{scannedItem.id}</span>
-                    </div>
-                    <h4 className="text-[13px] font-bold text-slate-900">{scannedItem.assetName || scannedItem.name}</h4>
-                  </div>
-                  <div>
-                    {renderSimpleBarcodeStripes(scannedItem.id)}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Category</span>
-                    <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded">{scannedItem.category || 'Hardware'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Department</span>
-                    <span className="font-bold text-slate-800">{scannedItem.department || 'INFORMATION COMMUNICATION AND TECHNOLOGY'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">User / Assignee</span>
-                    <span className="font-bold text-slate-800">{scannedItem.user || scannedItem.assignee}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Location</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.location}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Model</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.model || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Serial No. / Tag</span>
-                    <span className="font-mono text-slate-700">{scannedItem.serialNumber}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Engraved Number</span>
-                    <span className="font-mono text-slate-700">{scannedItem.engravedNumber || 'N/A'}</span>
-                  </div>
-
-                  {/* Network / Switch / Router Unique Fields */}
-                  {scannedItem.ipAddress && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">IP Address</span>
-                      <span className="font-mono font-bold text-blue-700">{scannedItem.ipAddress}</span>
-                    </div>
-                  )}
-                  {scannedItem.portCount && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Port Count / Interface</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.portCount}</span>
-                    </div>
-                  )}
-                  {scannedItem.firmwareVersion && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Firmware / OS</span>
-                      <span className="font-mono text-slate-700">{scannedItem.firmwareVersion}</span>
-                    </div>
-                  )}
-
-                  {/* Server Unique Fields */}
-                  {scannedItem.serverRole && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Server Role</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.serverRole}</span>
-                    </div>
-                  )}
-                  {scannedItem.cpuCores && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">CPU Cores</span>
-                      <span className="font-mono text-slate-700">{scannedItem.cpuCores}</span>
-                    </div>
-                  )}
-
-                  {/* Printer Unique Fields */}
-                  {scannedItem.printTechnology && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Print Technology</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.printTechnology}</span>
-                    </div>
-                  )}
-                  {scannedItem.connectionType && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Connection Type</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.connectionType}</span>
-                    </div>
-                  )}
-
-                  {/* Standard Computer / Default Fields */}
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">OS / Firmware</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.operatingSystem || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">RAM</span>
-                    <span className="font-mono text-slate-700">{scannedItem.ram || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">HARDDISK / Storage</span>
-                    <span className="font-mono text-slate-700">{scannedItem.hardDisk || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+              <AssetPassportCard item={scannedItem} />
 
               {/* Quick Update Form */}
               <form onSubmit={handleApplyQuickUpdate} className="space-y-3">
@@ -371,16 +255,17 @@ export default function BarcodeScanner({
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Deployment Status</label>
+                    <label htmlFor="scanner-state" className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Lifecycle state</label>
                     <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as any)}
+                      id="scanner-state"
+                      value={state}
+                      onChange={(e) => setState(e.target.value as LifecycleState)}
                       className="mt-1 w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded focus:outline-none"
                     >
-                      <option value="In Use">In Use</option>
-                      <option value="In Stock">In Stock</option>
-                      <option value="Maintenance">Maintenance</option>
-                      <option value="Retired">Retired</option>
+                      {/* Moves that need a reason (Retired, Disposed) are made from the register. */}
+                      {[scannedItem.lifecycleState, ...LIFECYCLE_TRANSITIONS[scannedItem.lifecycleState].filter(s => !NOTE_REQUIRED.includes(s))].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -414,13 +299,13 @@ export default function BarcodeScanner({
                 </div>
 
                 <div className="bg-yellow-50/50 p-2.5 rounded border border-yellow-100/50 text-[10px] text-slate-500 leading-normal font-medium">
-                  Field technicians can perform quick status overrides. Data deletions are restricted inside the quick dispatch terminal.
+                  Field technicians can update the assignee, location and state here. To retire or dispose of an asset, use “Change state” in the register, which asks for a reason.
                 </div>
 
                 <div className="flex justify-end gap-2">
                   <button
                     type="submit"
-                    disabled={isUpdating || currentUserRole === UserRole.VIEWER}
+                    disabled={isUpdating || !canEditInventory(currentUserRole) || scannedItem.lifecycleState === 'Disposed'}
                     className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 font-mono uppercase"
                   >
                     {isUpdating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5 text-yellow-500 stroke-[3px]" />}

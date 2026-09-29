@@ -3,21 +3,66 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { LifecycleState } from '../shared/lifecycle';
+
+export type { LifecycleState };
+
 export enum UserRole {
   ADMIN = 'Admin',
-  IT_MANAGER = 'IT Manager',
-  TECHNICIAN = 'Technician',
-  VIEWER = 'Viewer',
+  IT_OFFICER = 'IT Officer',
+  MANAGER = 'Manager',
+  AUDITOR = 'Auditor',
 }
 
+export type Permission =
+  | 'assets:read'
+  | 'assets:write'
+  | 'assets:delete'
+  | 'assets:dispose'
+  | 'alerts:manage'
+  | 'audit:read'
+  | 'users:manage'
+  | 'backups:manage';
+
+/** The signed-in user, as returned by /api/auth/me. */
 export interface User {
   id: string;
-  name: string;
-  email: string;
+  username: string;
+  fullName: string;
   role: UserRole;
-  password?: string;
-  department?: string;
+  mustChangePassword: boolean;
+  permissions: Permission[];
 }
+
+/** A row in the Admin user-management list. */
+export interface ManagedUser {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  disabled: boolean;
+  mustChangePassword: boolean;
+  locked: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+/** Response of GET /api/backups (Admin only). */
+export interface BackupStatus {
+  backups: { name: string; sizeBytes: number; createdAt: string; copied: boolean }[];
+  last: { ok: boolean; name: string | null; finishedAt: string; error: string | null; copyError: string | null } | null;
+  running: boolean;
+  settings: {
+    directory: string;
+    copyDirectory: string | null;
+    hour: number;
+    retention: { daily: number; weekly: number; monthly: number };
+  };
+  nextRunAt: string;
+}
+
+/** Roles that may create, edit and archive inventory records. */
+export const canEditInventory = (role: UserRole) => role === UserRole.ADMIN || role === UserRole.IT_OFFICER;
 
 export interface HardwareAsset {
   id: string;
@@ -31,7 +76,10 @@ export interface HardwareAsset {
   operatingSystem: string;
   ram: string;
   hardDisk: string;
-  status: string;
+  lifecycleState: LifecycleState;
+  lifecycleChangedAt?: string | null;
+  /** Free-text condition note, e.g. "Faulty". */
+  condition: string;
   department?: string;
   // Category-specific unique fields
   ipAddress?: string;
@@ -109,6 +157,10 @@ export interface AuditLog {
   action: string;
   details: string;
   timestamp: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
 }
 
 export interface DashboardStats {

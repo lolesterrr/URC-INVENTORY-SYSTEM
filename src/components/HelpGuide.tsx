@@ -64,6 +64,7 @@ export default function HelpGuide() {
               <li><strong className="font-semibold text-slate-800">Software Licenses</strong>: Track subscription contracts, product keys, and active seats.</li>
               <li><strong className="font-semibold text-slate-800">Server Parts</strong>: Monitors CPU cores, NICs, and redundant hot-plug PSUs inside rack slots.</li>
               <li><strong className="font-semibold text-slate-800">Filter Console</strong>: Search dynamically by item ID, specification, category, status, or assignee.</li>
+              <li><strong className="font-semibold text-slate-800">Lifecycle states</strong>: Each hardware asset is In Stock, Deployed, In Repair, Retired or Disposed. Use the “Change state” button on a row; retiring or disposing needs a reason, and only an Admin or the Manager can mark an asset Disposed, which is final. The History button shows every change to that asset.</li>
             </ul>
           </div>
 
@@ -82,7 +83,7 @@ export default function HelpGuide() {
               <li>Click the barcode icon on any hardware asset row to view its **IT Asset Passport**.</li>
               <li>Open the **Barcode Scan Center** from the primary sidebar to trigger simulated scans.</li>
               <li>Select a Mock Asset ID from the dropdown list and click **Scan Barcode** to decode.</li>
-              <li>The system instantly retrieves live dispatch logs, allowing you to update status, assignee, or station office in 1 click!</li>
+              <li>The system instantly retrieves live dispatch logs, allowing you to update the lifecycle state, assignee, or station office in 1 click!</li>
             </ol>
           </div>
 
@@ -121,22 +122,6 @@ export default function HelpGuide() {
             </ul>
           </div>
 
-          {/* Section 6: AI Predictive Diagnostics */}
-          <div className="p-3 bg-slate-50 rounded border border-slate-150 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-50 text-purple-800 rounded border border-purple-100">
-                <Sparkles className="h-3.5 w-3.5" />
-              </div>
-              <h4 className="text-[11.5px] font-bold text-slate-850 uppercase font-mono">6. AI Diagnostics & Copilot</h4>
-            </div>
-            <p className="text-[11px] text-slate-500 leading-normal font-sans">
-              Leverage Google Gemini API directly within your operational railway workspace:
-            </p>
-            <ul className="text-[11px] text-slate-600 space-y-1 pl-4 list-disc font-sans leading-normal">
-              <li><strong className="font-semibold text-slate-800">Predictive Diagnostics</strong>: On any hardware asset row, click the Laptop/AI icon to run a preventative lifespan review.</li>
-              <li><strong className="font-semibold text-slate-800">AI Chat Co-pilot</strong>: Open the Intelligent Copilot from the sidebar. Ask questions in natural language, or use quick buttons to recommend procurement parameters.</li>
-            </ul>
-          </div>
 
         </div>
       </div>
