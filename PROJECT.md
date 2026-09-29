@@ -8,35 +8,40 @@ Turn the internship prototype into a production-grade, **self-hosted** IT invent
 - **Internal database** with no cloud dependency, plus **scheduled automatic backups** and a tested restore.
 - Harden security, fix pitfalls, and add the features that established asset-management products provide.
 
-## 2. Current state (scan of 2026-09-29)
-| Area | Today |
+## 2. Current state (after Phase 1+2, 2026-09-29)
+| Area | Now |
 |---|---|
-| Frontend | React 19 + Vite + Tailwind. Monolithic files (`InventoryTables.tsx` is about 2,100 lines, `App.tsx` about 1,000). |
-| Backend | Single `server.ts` (about 900 lines), Express, CRUD for hardware, software, server components, alerts, audit logs and AI copilot. |
-| Data | `data/inventory.json` rewritten with `writeFileSync`, **and** Google Firestore (cloud). |
-| Auth | Client-side only: users kept in `localStorage`, admin password hard-coded in `src/App.tsx`. |
-| AI | Google Gemini (`/api/copilot/*`), which needs internet and sends inventory data outside URC. |
-| Tests / CI | None. |
+| Frontend | React 19 + Vite + Tailwind. `App.tsx` decides which screen to show from the session. `MainApp.tsx` is about 700 lines and `InventoryTables.tsx` about 2,000; both still need splitting (Phase 4). |
+| Backend | `server/`: Express 5, routes in separate files, each request body validated with zod, helmet security headers. |
+| Data | SQLite via better-sqlite3 + Drizzle, in `storage/inventory.db` (or `DATA_DIR`). Migrations in `drizzle/` run at startup. Deletes are soft deletes. |
+| Auth | Server-side sessions (httpOnly, SameSite=Strict cookie), argon2id password hashes, lockout after 5 failures, forced password change, 4 roles. |
+| Audit | `audit_log` table records before and after values. SQLite triggers block UPDATE and DELETE. |
+| AI / cloud | Removed (Firebase, Gemini). |
+| Tests | `tests/api.test.ts`: 16 API tests (auth, roles, validation, audit, import). |
 
-## 3. Findings: pitfalls and vulnerabilities (preliminary)
+## 3. Findings: pitfalls and vulnerabilities
 Severity: 🔴 critical · 🟠 high · 🟡 medium
 
-| # | Sev | Finding | Where |
-|---|---|---|---|
-| F1 | 🔴 | Admin password is hard-coded in the frontend bundle and in git history, so anyone who opens the page can read it. | `src/App.tsx:29` |
-| F2 | 🔴 | The server trusts `x-user-role` / `x-user-email` headers from the client. Anyone on the LAN can send `x-user-role: Admin` and modify or delete data. | `server.ts` (every write route) |
-| F3 | 🔴 | Firestore rules are `allow read, write: if true`. The cloud DB is world-readable and world-writable to anyone with the (committed) config. | `firestore.rules`, `firebase-applet-config.json` |
-| F4 | 🔴 | Self-registration creates **ADMIN** accounts, with a default password when none is supplied. | `src/App.tsx:111-122` |
-| F5 | 🟠 | Passwords are stored in plaintext (`localStorage`). There is no hashing and no server-side user store. | `src/App.tsx` |
-| F6 | 🟠 | Real staff names and serial numbers are committed to the repo. | `data/*.json` |
-| F7 | 🟠 | The JSON-file DB has no transactions or locking. Concurrent writes or a crash mid-write can corrupt or lose data. | `server.ts:110` |
-| F8 | 🟠 | Inventory data is sent to external services (Firebase, Gemini), which conflicts with the "internal only" goal. | `server.ts`, `src/firebase.ts` |
-| F9 | 🟡 | No input validation, rate limiting, security headers (helmet), CSRF protection or HTTPS. | `server.ts` |
-| F10 | 🟡 | The port is hard-coded (3000). `clean` uses `rm -rf`, which fails on Windows. The package is still named `react-example`. | `server.ts:18`, `package.json` |
-| F11 | 🟡 | There is no backup or restore mechanism. | — |
-| F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` |
+| # | Sev | Finding | Where | Status |
+|---|---|---|---|---|
+| F1 | 🔴 | Admin password is hard-coded in the frontend bundle and in git history, so anyone who opens the page can read it. | `src/App.tsx:29` | ✅ fixed (password removed; **rotate it anywhere it is reused**) |
+| F2 | 🔴 | The server trusts `x-user-role` / `x-user-email` headers from the client. Anyone on the LAN can send `x-user-role: Admin` and modify or delete data. | `server.ts` (every write route) | ✅ fixed |
+| F3 | 🔴 | Firestore rules are `allow read, write: if true`. The cloud DB is world-readable and world-writable to anyone with the (committed) config. | `firestore.rules`, `firebase-applet-config.json` | ⚠️ code removed; **the Firebase project still exists and is open**, so lock it down or delete it |
+| F4 | 🔴 | Self-registration creates **ADMIN** accounts, with a default password when none is supplied. | `src/App.tsx:111-122` | ✅ fixed |
+| F5 | 🟠 | Passwords are stored in plaintext (`localStorage`). There is no hashing and no server-side user store. | `src/App.tsx` | ✅ fixed |
+| F6 | 🟠 | Real staff names and serial numbers are committed to the repo. | `data/*.json` | ✅ untracked (still in git history) |
+| F7 | 🟠 | The JSON-file DB has no transactions or locking. Concurrent writes or a crash mid-write can corrupt or lose data. | `server.ts:110` | ✅ fixed |
+| F8 | 🟠 | Inventory data is sent to external services (Firebase, Gemini), which conflicts with the "internal only" goal. | `server.ts`, `src/firebase.ts` | ✅ fixed |
+| F9 | 🟡 | No input validation, rate limiting, security headers (helmet), CSRF protection or HTTPS. | `server.ts` | ✅ validation, rate limit, helmet, SameSite cookie; HTTPS is ready but needs a certificate |
+| F10 | 🟡 | The port is hard-coded (3000). `clean` uses `rm -rf`, which fails on Windows. The package is still named `react-example`. | `server.ts:18`, `package.json` | ✅ fixed |
+| F11 | 🟡 | There is no backup or restore mechanism. | — | ⏳ Phase 3 |
+| F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` | ◐ tests added; component split is Phase 4 |
 
-| F13 | 🟠 | `npm audit`: 7 known vulnerabilities (2 high: `nanoid`, `browserslist`; 5 moderate incl. `express`/`qs`). All fixable via `npm audit fix`. | `package-lock.json` |
+| F13 | 🟠 | `npm audit`: 7 known vulnerabilities (2 high: `nanoid`, `browserslist`; 5 moderate incl. `express`/`qs`). All fixable via `npm audit fix`. | `package-lock.json` | ✅ fixed (4 moderate issues remain, all inside the dev-only drizzle-kit tool) |
+
+| F14 | 🔴 | `GET /api/users` returns every user **including plaintext passwords** to anyone, and `POST /api/users` lets anyone create or overwrite accounts. | `server.ts:570-592` | ✅ fixed |
+| F15 | 🟡 | Alerts are marked `emailSent: true`, but no email is ever sent. The alert check uses a hard-coded date (`2026-07-14`). | `server.ts` `runAlertChecks` | ✅ emailSent is honest; real date used |
+| F16 | 🟡 | The audit log is capped at 500 entries and can be spoofed, so it is not tamper-proof. | `server.ts` `logAudit` | ✅ fixed |
 
 Line-by-line route review and the git-history secret check are still pending (T2).
 
@@ -67,19 +72,22 @@ Line-by-line route review and the git-history secret check are still pending (T2
 
 ## 6. Roadmap (phases)
 0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
-1. **Security foundation**: ← *next* server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
-2. **Internal database**: schema, ORM, migration script from `inventory.json`, remove Firebase.
-3. **Backups**: scheduled backup, retention, restore script, restore drill.
+1. **Security foundation**: ✅ server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
+2. **Internal database**: ✅ schema, ORM, migration script from `inventory.json`, remove Firebase.
+3. **Backups**: ← *next* scheduled backup, retention, restore script, restore drill.
 4. **Refactor**: split `server.ts` into routes, services and db. Split large components. Add tests.
 5. **v1 features**: from the comparison doc.
 6. **Windows deployment**: Windows service, HTTPS, firewall rule, installation runbook (`docs/DEPLOYMENT.md`).
 
 ## 7. Tasks
 ### Active
-- [ ] T2 Security scan: review each route and check git history for secrets. `npm audit` is done (F13).
-- [ ] T4 Phase 1 and 2 together, because auth needs the DB for users: Drizzle schema, SQLite setup, JSON-to-SQLite migration script, auth with roles, remove Firebase and Gemini, remove the hard-coded password, validation with zod, helmet, `npm audit fix`.
+- [ ] T5 Phase 3, backups: in-app nightly scheduler using the better-sqlite3 `.backup()` API, `PRAGMA integrity_check`, retention 7/4/12, optional second copy path, Admin "Backup now" button with a list of backups, `scripts/restore.ts`, restore drill test.
+- [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
+- [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
+- [ ] T2 Security scan: review git history for other secrets.
 
 ### Completed
 - [x] T0 Initial scan. Created `CLAUDE.md`, `PROJECT.md` and the draft `docs/FEATURE_COMPARISON.md`.
 - [x] T1 v1 feature scope frozen: see the Priority column in `docs/FEATURE_COMPARISON.md`.
 - [x] T3 Decisions D2–D7 and the roles table recorded (2026-09-29).
+- [x] T4 Phase 1+2 (2026-09-29): SQLite, Drizzle migrations, auth, roles, user admin UI, append-only audit log, validation, helmet, Express 5, Firebase and Gemini removed, legacy import (82 hardware / 4 software / 4 components verified), 16 tests, production build verified in a browser. The server bundle moved to `dist-server/` so it is no longer served publicly from `dist/`.

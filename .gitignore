@@ -1,8 +1,16 @@
 node_modules/
-build/
 dist/
+dist-server/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
+
+# Runtime data: database, backups and legacy exports hold staff names and serial numbers.
+storage/
+backups/
+*.db
+*.db-wal
+*.db-shm
+data/
