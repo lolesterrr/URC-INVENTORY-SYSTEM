@@ -14,7 +14,7 @@ IT asset inventory for Uganda Railways Corporation (URC). Target: self-hosted on
 - Staff names and serial numbers are internal data: keep them out of logs, fixtures and commits.
 
 ## Stack (current)
-React 19 + Vite + Tailwind (frontend), Express + TypeScript (`server.ts`), JSON file DB in `data/` (being replaced).
+React 19 + Vite + Tailwind (frontend), Express + TypeScript (`server.ts`), moving to SQLite (`better-sqlite3` + Drizzle). Firebase and Gemini are being removed.
 
 ## Commands
 - `npm install`: install dependencies

@@ -36,31 +36,38 @@ Severity: 🔴 critical · 🟠 high · 🟡 medium
 | F11 | 🟡 | There is no backup or restore mechanism. | — |
 | F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` |
 
-A full dependency audit (`npm audit`) and a line-by-line review are pending. See task T2.
+| F13 | 🟠 | `npm audit`: 7 known vulnerabilities (2 high: `nanoid`, `browserslist`; 5 moderate incl. `express`/`qs`). All fixable via `npm audit fix`. | `package-lock.json` |
+
+Line-by-line route review and the git-history secret check are still pending (T2).
 
 ## 4. Architecture decisions
 | ID | Decision | Status |
 |---|---|---|
-| D1 | Keep React + Express/TypeScript and reuse the UI. | ✅ Proposed |
-| D2 | Database engine: **SQLite** (WAL mode, single file, easy backup) behind an ORM (Drizzle or Prisma), so we can move to PostgreSQL or SQL Server later. | ❓ Needs user input (Q1) |
-| D3 | Auth: server-side sessions, argon2 or bcrypt hashes, role-based access control enforced in middleware. Active Directory/LDAP login optional later. | ❓ Q2 |
-| D4 | Hosting: Node app runs as a **Windows Service** (NSSM or node-windows), optionally behind IIS or Caddy for HTTPS on the LAN. | ❓ Q3 |
-| D5 | Backups: nightly job (Windows Task Scheduler or in-app scheduler) using the SQLite online backup API. Timestamped files, retention policy (e.g. 7 daily, 4 weekly, 12 monthly), copy to a network share, restore script. | ✅ Proposed |
-| D6 | Remove Firebase entirely. Gemini copilot: remove it or make it optional and off by default. | ❓ Q4 |
+| D1 | Keep React + Express/TypeScript and reuse the UI. | ✅ Agreed |
+| D2 | **SQLite** via `better-sqlite3` (WAL mode) with **Drizzle ORM** and migrations. DB file lives outside the repo (e.g. `C:\URC-Inventory\data\inventory.db`, path from `.env`). 300 assets growing to tens of thousands is far below SQLite's limits. | ✅ Agreed |
+| D3 | **Local accounts only**: about 4–5 users, so no Active Directory. The Admin creates accounts and there is **no self-registration**. Passwords are hashed with argon2id. Server-side sessions use an httpOnly cookie, with a 30-minute idle timeout. The account locks after 5 failed logins. Users must change the initial password on first login. | ✅ Agreed |
+| D4 | Roles and permissions are enforced by server middleware. See §4a. | ✅ Agreed |
+| D5 | Hosting: Node runs as a **Windows Service** via NSSM, self-contained, with no IIS dependency. HTTPS certificate files are configured through `.env`; the certificate itself comes from URC IT at deployment. The step-by-step runbook will be written for someone new to Windows Server. | ✅ Agreed |
+| D6 | Backups: in-app scheduler (nightly, 02:00) using the SQLite online backup API. Files are timestamped and checked with `PRAGMA integrity_check`. Retention is 7 daily, 4 weekly and 12 monthly. There is an optional second copy path (network share or other disk), plus a "Backup now" button, a restore script and a restore drill. | ✅ Agreed |
+| D7 | **Remove Firebase and the Gemini AI assistant.** The Gemini free tier has usage limits, needs the server to reach the internet, and Google's free-tier terms allow it to use submitted data to improve its products, so URC asset data would leave the organisation. Can be revisited later as an opt-in feature. | ✅ Agreed |
 
-## 5. Open questions for the user
-- **Q1** Does URC IT already run **SQL Server** or **PostgreSQL** on that server? If not, SQLite is the simplest and most reliable choice at this scale.
-- **Q2** Does URC use **Active Directory** (domain logins)? If so, staff could sign in with their Windows accounts.
-- **Q3** Does the server run **IIS**? Does URC have an internal certificate authority for HTTPS?
-- **Q4** Should the AI copilot stay? It needs internet and sends data to Google.
-- **Q5** Roughly how many users, and how many assets expected in 3–5 years?
-- **Q6** Where should backups go (second drive, NAS or network share), and who restores them?
-- **Q7** Which roles are needed? For example Admin, IT Officer, Auditor (read-only) and Department Head.
-- **Q8** Which features from `docs/FEATURE_COMPARISON.md` are must-have for version 1?
+### 4a. Roles
+| Role | Who | Permissions |
+|---|---|---|
+| **Admin** | The developer during build and handover, **plus one permanent URC IT staff member** (at least 2 admins so nobody gets locked out) | Everything, plus managing users, backups and restore, and settings. Use this account only for admin tasks. |
+| **IT Officer** | The 2 IT technicians | Create and edit assets, check out and check in, run physical audits, import and export CSV, print labels. Cannot manage users or delete the audit log. Delete is a soft delete. |
+| **Manager** | The system analyst (liaison to the board) | View everything, reports and dashboards, export, **approve disposals and write-offs**. No hands-on editing. Named "Manager" rather than "Department Head", which could be confused with other URC department heads. |
+| **Auditor** | Internal audit | Read-only view of everything, including the full change history, plus export. |
+
+## 5. Open questions
+- **Q6** Where should backups be copied (a second disk or a network share)? Ask URC IT at deployment. The default is a local `backups` folder.
+- **Q9** Who will be the permanent URC Admin after handover?
+- **Q10** Does the server have internet access? It is no longer required.
+- **Q11** Where are the email/SMTP settings for alerts? This only matters for a later feature.
 
 ## 6. Roadmap (phases)
-0. **Discovery**: feature comparison, answer Q1–Q8, freeze v1 scope. ← *we are here*
-1. **Security foundation**: server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
+0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
+1. **Security foundation**: ← *next* server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
 2. **Internal database**: schema, ORM, migration script from `inventory.json`, remove Firebase.
 3. **Backups**: scheduled backup, retention, restore script, restore drill.
 4. **Refactor**: split `server.ts` into routes, services and db. Split large components. Add tests.
@@ -69,9 +76,10 @@ A full dependency audit (`npm audit`) and a line-by-line review are pending. See
 
 ## 7. Tasks
 ### Active
-- [ ] T1 Review `docs/FEATURE_COMPARISON.md` together and mark must-have, should-have and later.
-- [ ] T2 Full security scan: `npm audit`, review each route, check git history for secrets.
-- [ ] T3 Answer the open questions Q1–Q8.
+- [ ] T2 Security scan: review each route and check git history for secrets. `npm audit` is done (F13).
+- [ ] T4 Phase 1 and 2 together, because auth needs the DB for users: Drizzle schema, SQLite setup, JSON-to-SQLite migration script, auth with roles, remove Firebase and Gemini, remove the hard-coded password, validation with zod, helmet, `npm audit fix`.
 
 ### Completed
-- [x] T0 Initial scan of the codebase. Created `CLAUDE.md`, `PROJECT.md` and the draft `docs/FEATURE_COMPARISON.md`.
+- [x] T0 Initial scan. Created `CLAUDE.md`, `PROJECT.md` and the draft `docs/FEATURE_COMPARISON.md`.
+- [x] T1 v1 feature scope frozen: see the Priority column in `docs/FEATURE_COMPARISON.md`.
+- [x] T3 Decisions D2–D7 and the roles table recorded (2026-09-29).
