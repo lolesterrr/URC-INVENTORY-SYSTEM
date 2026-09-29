@@ -121,22 +121,6 @@ export default function HelpGuide() {
             </ul>
           </div>
 
-          {/* Section 6: AI Predictive Diagnostics */}
-          <div className="p-3 bg-slate-50 rounded border border-slate-150 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-50 text-purple-800 rounded border border-purple-100">
-                <Sparkles className="h-3.5 w-3.5" />
-              </div>
-              <h4 className="text-[11.5px] font-bold text-slate-850 uppercase font-mono">6. AI Diagnostics & Copilot</h4>
-            </div>
-            <p className="text-[11px] text-slate-500 leading-normal font-sans">
-              Leverage Google Gemini API directly within your operational railway workspace:
-            </p>
-            <ul className="text-[11px] text-slate-600 space-y-1 pl-4 list-disc font-sans leading-normal">
-              <li><strong className="font-semibold text-slate-800">Predictive Diagnostics</strong>: On any hardware asset row, click the Laptop/AI icon to run a preventative lifespan review.</li>
-              <li><strong className="font-semibold text-slate-800">AI Chat Co-pilot</strong>: Open the Intelligent Copilot from the sidebar. Ask questions in natural language, or use quick buttons to recommend procurement parameters.</li>
-            </ul>
-          </div>
 
         </div>
       </div>

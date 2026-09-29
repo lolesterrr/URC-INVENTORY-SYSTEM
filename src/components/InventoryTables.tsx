@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { 
   Plus, Edit2, Trash2, Search, Filter, Download, Printer, Tag, Eye, Info, X, Check, Laptop, ShieldAlert, RefreshCw
 } from 'lucide-react';
-import { HardwareAsset, SoftwareLicense, ServerComponent, UserRole, URC_DEPARTMENTS } from '../types';
+import { HardwareAsset, SoftwareLicense, ServerComponent, UserRole, URC_DEPARTMENTS, canEditInventory } from '../types';
 
 interface InventoryTablesProps {
   hardware: HardwareAsset[];
@@ -114,8 +114,6 @@ export default function InventoryTables({
 
   // Barcode and Analysis view popups
   const [selectedBarcodeId, setSelectedBarcodeId] = useState<string | null>(null);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Delete Confirmation Modal State
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
@@ -145,13 +143,13 @@ export default function InventoryTables({
   };
 
   // Permission guards
-  const canModifyAll = currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.IT_MANAGER;
-  const canDelete = currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.IT_MANAGER;
-  const canUpdateStatusOnly = currentUserRole === UserRole.TECHNICIAN;
+  // UI hints only; the server enforces the same rules.
+  const canModifyAll = canEditInventory(currentUserRole);
+  const canDelete = canModifyAll;
 
   // Handle opening modal for Add
   const handleOpenAddModal = () => {
-    if (currentUserRole === UserRole.VIEWER || canUpdateStatusOnly) {
+    if (!canModifyAll) {
       alert(`Access Denied: Your active role (${currentUserRole}) does not permit adding new assets.`);
       return;
     }
@@ -209,7 +207,7 @@ export default function InventoryTables({
 
   // Handle Edit Action
   const handleOpenEditModal = (item: any) => {
-    if (currentUserRole === UserRole.VIEWER) {
+    if (!canModifyAll) {
       alert("Access Denied: Viewers cannot make edits.");
       return;
     }
@@ -546,27 +544,6 @@ export default function InventoryTables({
     window.print();
   };
 
-  // AI Diagnostic Analysis via backend
-  const handleRunAiAnalysis = async (item: any) => {
-    setIsAnalyzing(true);
-    setAiAnalysisResult(null);
-    try {
-      const response = await fetch(`/api/copilot/analyze/${item.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await response.json();
-      if (data.analysis) {
-        setAiAnalysisResult(data.analysis);
-      } else {
-        setAiAnalysisResult('AI service unavailable. Check log trace.');
-      }
-    } catch (err: any) {
-      setAiAnalysisResult(`Failed: ${err.message}`);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   // Filtering lists
   const filteredHardware = hardware.filter(h => {
@@ -703,7 +680,7 @@ export default function InventoryTables({
             </button>
             <button
               onClick={handleOpenAddModal}
-              disabled={currentUserRole === UserRole.VIEWER || canUpdateStatusOnly}
+              disabled={!canModifyAll}
               className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50 font-mono"
             >
               <Plus className="h-3.5 w-3.5 stroke-[3px]" />
@@ -900,7 +877,6 @@ export default function InventoryTables({
                         </td>
                         <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">
                           <button onClick={() => setSelectedBarcodeId(h.id)} title="Show Barcode & Pass" className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors"><Tag className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleRunAiAnalysis(h)} title="AI Predictive Diagnosis" className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"><Laptop className="h-3.5 w-3.5" /></button>
                           <button onClick={() => handleOpenEditModal(h)} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
                           <button onClick={() => setDeleteConfirmTarget({ type: 'hardware', id: h.id, name: h.assetName || h.name || h.id })} disabled={!canDelete} title="Delete Network Switch/Router" className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button>
                         </td>
@@ -959,7 +935,6 @@ export default function InventoryTables({
                         </td>
                         <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">
                           <button onClick={() => setSelectedBarcodeId(h.id)} title="Show Barcode & Pass" className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors"><Tag className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleRunAiAnalysis(h)} title="AI Predictive Diagnosis" className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"><Laptop className="h-3.5 w-3.5" /></button>
                           <button onClick={() => handleOpenEditModal(h)} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
                           <button onClick={() => setDeleteConfirmTarget({ type: 'hardware', id: h.id, name: h.assetName || h.name || h.id })} disabled={!canDelete} title="Delete Server Asset" className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button>
                         </td>
@@ -1014,7 +989,6 @@ export default function InventoryTables({
                         </td>
                         <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">
                           <button onClick={() => setSelectedBarcodeId(h.id)} title="Show Barcode & Pass" className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors"><Tag className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleRunAiAnalysis(h)} title="AI Predictive Diagnosis" className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"><Laptop className="h-3.5 w-3.5" /></button>
                           <button onClick={() => handleOpenEditModal(h)} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
                           <button onClick={() => setDeleteConfirmTarget({ type: 'hardware', id: h.id, name: h.assetName || h.name || h.id })} disabled={!canDelete} title="Delete Hardware Asset" className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button>
                         </td>
@@ -1083,7 +1057,6 @@ export default function InventoryTables({
                         </td>
                         <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">
                           <button onClick={() => setSelectedBarcodeId(h.id)} title="Show Barcode & Pass" className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors"><Tag className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleRunAiAnalysis(h)} title="AI Predictive Diagnosis" className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"><Laptop className="h-3.5 w-3.5" /></button>
                           <button onClick={() => handleOpenEditModal(h)} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
                           <button onClick={() => setDeleteConfirmTarget({ type: 'hardware', id: h.id, name: h.assetName || h.name || h.id })} disabled={!canDelete} title="Delete Hardware Asset" className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /></button>
                         </td>
@@ -1147,15 +1120,8 @@ export default function InventoryTables({
                     </td>
                     <td className="px-4 py-2 text-right space-x-1 whitespace-nowrap">
                       <button
-                        onClick={() => handleRunAiAnalysis(s)}
-                        title="AI License Diagnostic"
-                        className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"
-                      >
-                        <Laptop className="h-3.5 w-3.5" />
-                      </button>
-                      <button
                         onClick={() => handleOpenEditModal(s)}
-                        disabled={currentUserRole === UserRole.VIEWER || canUpdateStatusOnly}
+                        disabled={!canModifyAll}
                         className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors disabled:opacity-30"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
@@ -1225,13 +1191,6 @@ export default function InventoryTables({
                     <td className="px-4 py-2 text-slate-400 font-medium">{sc.reorderLevel}</td>
                     <td className="px-4 py-2 text-right space-x-1 whitespace-nowrap">
                       <button
-                        onClick={() => handleRunAiAnalysis(sc)}
-                        title="AI Server Diagnosis"
-                        className="p-1 hover:bg-amber-50 text-amber-600 rounded transition-colors"
-                      >
-                        <Laptop className="h-3.5 w-3.5" />
-                      </button>
-                      <button
                         onClick={() => handleOpenEditModal(sc)}
                         className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors"
                       >
@@ -1295,48 +1254,7 @@ export default function InventoryTables({
         </div>
       )}
 
-      {/* AI Diagnostic Diagnostic Popup Modal */}
-      {aiAnalysisResult && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-5 max-w-lg w-full border border-slate-200 shadow-md space-y-3 relative">
-            <button
-              onClick={() => setAiAnalysisResult(null)}
-              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            
-            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-150">
-              <Laptop className="h-4.5 w-4.5 text-yellow-500" />
-              <h3 className="text-sm font-bold text-slate-800 uppercase font-mono">URC AI Predictive Diagnostics</h3>
-            </div>
 
-            <div className="text-[11px] text-slate-700 leading-relaxed font-sans bg-slate-50 p-3 rounded max-h-[280px] overflow-y-auto whitespace-pre-line border border-slate-150">
-              {aiAnalysisResult}
-            </div>
-
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                onClick={() => setAiAnalysisResult(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors font-mono uppercase"
-              >
-                Close Diagnosis
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Processing Loader for AI Diagnostics */}
-      {isAnalyzing && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-5 flex flex-col items-center gap-3 shadow-md max-w-xs text-center border border-slate-200">
-            <RefreshCw className="h-6 w-6 text-yellow-500 animate-spin" />
-            <h4 className="text-xs font-bold text-slate-800 uppercase font-mono tracking-wider">Predicting Diagnostics...</h4>
-            <p className="text-[11px] text-slate-400">Querying server-side Gemini API for URC hardware metrics...</p>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmTarget && (

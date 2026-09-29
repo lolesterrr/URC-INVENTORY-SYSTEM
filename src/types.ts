@@ -5,19 +5,44 @@
 
 export enum UserRole {
   ADMIN = 'Admin',
-  IT_MANAGER = 'IT Manager',
-  TECHNICIAN = 'Technician',
-  VIEWER = 'Viewer',
+  IT_OFFICER = 'IT Officer',
+  MANAGER = 'Manager',
+  AUDITOR = 'Auditor',
 }
 
+export type Permission =
+  | 'assets:read'
+  | 'assets:write'
+  | 'assets:delete'
+  | 'alerts:manage'
+  | 'audit:read'
+  | 'users:manage';
+
+/** The signed-in user, as returned by /api/auth/me. */
 export interface User {
   id: string;
-  name: string;
-  email: string;
+  username: string;
+  fullName: string;
   role: UserRole;
-  password?: string;
-  department?: string;
+  mustChangePassword: boolean;
+  permissions: Permission[];
 }
+
+/** A row in the Admin user-management list. */
+export interface ManagedUser {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  disabled: boolean;
+  mustChangePassword: boolean;
+  locked: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+/** Roles that may create, edit and archive inventory records. */
+export const canEditInventory = (role: UserRole) => role === UserRole.ADMIN || role === UserRole.IT_OFFICER;
 
 export interface HardwareAsset {
   id: string;

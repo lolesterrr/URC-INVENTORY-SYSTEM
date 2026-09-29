@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Mail, Check, BellRing, RefreshCw, AlertTriangle, Clock, Calendar, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { Alert, UserRole } from '../types';
+import { Alert, UserRole, canEditInventory } from '../types';
 
 interface NotificationCenterProps {
   alerts: Alert[];
@@ -123,7 +123,7 @@ export default function NotificationCenter({
 
                 <button
                   onClick={() => onResolveAlert(alert.id)}
-                  disabled={currentUserRole === UserRole.VIEWER}
+                  disabled={!canEditInventory(currentUserRole)}
                   className="bg-white hover:bg-slate-50 border border-slate-350 hover:border-slate-400 text-slate-700 font-bold px-2 py-1 rounded text-[10px] transition-colors flex items-center gap-1 font-mono uppercase self-start sm:self-center disabled:opacity-50 whitespace-nowrap"
                 >
                   <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3px]" />
@@ -170,14 +170,14 @@ export default function NotificationCenter({
                 SMTP Outbox Terminal
               </h3>
               <span className="text-[9px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-bold px-1.5 py-0.5 rounded font-mono">
-                SMTP_SANDBOX
+                PREVIEW ONLY
               </span>
             </div>
 
             {selectedEmail ? (
               <div className="space-y-2.5 animate-fade-in text-xs">
                 <div className="space-y-0.5 bg-slate-950 p-2.5 rounded border border-slate-800 text-[9px] font-mono text-slate-400 leading-relaxed">
-                  <p><span className="text-yellow-500 font-bold">Relay:</span> smtp.urc.go.ug (Port 587)</p>
+                  <p><span className="text-yellow-500 font-bold">Note:</span> email delivery is not enabled yet. This is a preview of the message.</p>
                   <p><span className="text-slate-200 font-bold">To:</span> {selectedEmail.emailTo}</p>
                   <p><span className="text-slate-200 font-bold">From:</span> alerts-gateway@urc.go.ug</p>
                   <p><span className="text-slate-200 font-bold">Subject:</span> [URC-IT-ALARM] {selectedEmail.title}</p>

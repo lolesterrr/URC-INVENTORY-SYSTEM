@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
-import { HardwareAsset, UserRole } from '../types';
+import { HardwareAsset, UserRole, canEditInventory } from '../types';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
@@ -25,7 +25,7 @@ export default function BarcodeScanner({
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Field editing state for scanned item
-  const [status, setStatus] = useState<'In Use' | 'In Stock' | 'Maintenance' | 'Retired'>('In Stock');
+  const [status, setStatus] = useState<string>('In Stock');
   const [assignee, setAssignee] = useState('');
   const [location, setLocation] = useState('');
 
@@ -36,7 +36,7 @@ export default function BarcodeScanner({
   useEffect(() => {
     if (scannedItem) {
       setStatus(scannedItem.status);
-      setAssignee(scannedItem.assignee);
+      setAssignee(scannedItem.assignee ?? scannedItem.user);
       setLocation(scannedItem.location);
     }
   }, [scannedItem]);
@@ -97,7 +97,7 @@ export default function BarcodeScanner({
     e.preventDefault();
     if (!scannedItem) return;
     
-    if (currentUserRole === UserRole.VIEWER) {
+    if (!canEditInventory(currentUserRole)) {
       alert('Access Denied: Viewers cannot save updates.');
       return;
     }
@@ -420,7 +420,7 @@ export default function BarcodeScanner({
                 <div className="flex justify-end gap-2">
                   <button
                     type="submit"
-                    disabled={isUpdating || currentUserRole === UserRole.VIEWER}
+                    disabled={isUpdating || !canEditInventory(currentUserRole)}
                     className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 font-mono uppercase"
                   >
                     {isUpdating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5 text-yellow-500 stroke-[3px]" />}
