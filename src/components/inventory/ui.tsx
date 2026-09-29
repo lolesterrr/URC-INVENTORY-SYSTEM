@@ -1,6 +1,6 @@
 /** Small building blocks shared by the inventory registers, forms and dialogs. */
 import React, { type ReactNode } from 'react';
-import { Edit2, Tag, Trash2, X } from 'lucide-react';
+import { Edit2, History, Tag, Trash2, Workflow, X } from 'lucide-react';
 import { URC_DEPARTMENTS } from '../../types';
 
 export interface Column<T> {
@@ -81,21 +81,38 @@ export function RowActions({
   onEdit,
   onArchive,
   onBarcode,
+  onLifecycle,
+  onHistory,
+  editLocked,
 }: {
   canEdit: boolean;
   label: string;
   onEdit: () => void;
   onArchive: () => void;
   onBarcode?: () => void;
+  onLifecycle?: () => void;
+  onHistory?: () => void;
+  /** Record is read-only (e.g. a disposed asset): editing is off, archiving stays available. */
+  editLocked?: boolean;
 }) {
   return (
     <>
+      {onLifecycle && (
+        <button onClick={onLifecycle} title="Change state" aria-label={`Change state of ${label}`} className="p-1 hover:bg-amber-50 text-amber-700 rounded transition-colors">
+          <Workflow className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {onHistory && (
+        <button onClick={onHistory} title="History" aria-label={`History of ${label}`} className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors">
+          <History className="h-3.5 w-3.5" />
+        </button>
+      )}
       {onBarcode && (
         <button onClick={onBarcode} title="Show barcode" aria-label={`Show barcode for ${label}`} className="p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded transition-colors">
           <Tag className="h-3.5 w-3.5" />
         </button>
       )}
-      <button onClick={onEdit} disabled={!canEdit} title="Edit" aria-label={`Edit ${label}`} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors disabled:opacity-30">
+      <button onClick={onEdit} disabled={!canEdit || editLocked} title={editLocked ? 'Read-only' : 'Edit'} aria-label={`Edit ${label}`} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors disabled:opacity-30">
         <Edit2 className="h-3.5 w-3.5" />
       </button>
       <button onClick={onArchive} disabled={!canEdit} title="Archive" aria-label={`Archive ${label}`} className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors disabled:opacity-30">

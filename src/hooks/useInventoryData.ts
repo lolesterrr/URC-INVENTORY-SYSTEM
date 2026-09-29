@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
-import type { Alert, AuditLog, DashboardStats, HardwareAsset, ServerComponent, SoftwareLicense } from '../types';
+import type { Alert, AuditLog, DashboardStats, HardwareAsset, LifecycleState, ServerComponent, SoftwareLicense } from '../types';
 
 export interface InventoryData {
   hardware: HardwareAsset[];
@@ -57,6 +57,8 @@ export function useInventoryData() {
     addHardware: (item: HardwareAsset) => change('/api/hardware', 'POST', item),
     updateHardware: (item: HardwareAsset) => change(`/api/hardware/${encodeURIComponent(item.id)}`, 'PUT', item),
     deleteHardware: (id: string) => change(`/api/hardware/${encodeURIComponent(id)}`, 'DELETE'),
+    changeLifecycle: (id: string, to: LifecycleState, note: string) =>
+      change(`/api/hardware/${encodeURIComponent(id)}/lifecycle`, 'POST', { to, note }),
     addSoftware: (item: SoftwareLicense) => change('/api/software', 'POST', item),
     updateSoftware: (item: SoftwareLicense) => change(`/api/software/${encodeURIComponent(item.id)}`, 'PUT', item),
     deleteSoftware: (id: string) => change(`/api/software/${encodeURIComponent(id)}`, 'DELETE'),

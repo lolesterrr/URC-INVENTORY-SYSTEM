@@ -1,5 +1,6 @@
 /** Pure helpers for the inventory registers: grouping, filtering, CSV and ID suggestions. No React here. */
 import type { HardwareAsset, ServerComponent, SoftwareLicense } from '../../types';
+import { LIFECYCLE_STATES } from '../../../shared/lifecycle';
 
 export type InventoryTab = 'hardware' | 'software' | 'servers';
 export type HardwareCategory = NonNullable<HardwareAsset['category']>;
@@ -10,7 +11,7 @@ export const SOFTWARE_CATEGORIES: SoftwareLicense['category'][] = ['Operating Sy
 export const COMPONENT_CATEGORIES: ServerComponent['category'][] = ['RAM', 'Storage', 'CPU', 'Power Supply', 'NIC'];
 
 export const STATUSES: Record<InventoryTab, string[]> = {
-  hardware: ['In Use', 'In Stock', 'Maintenance', 'Retired'],
+  hardware: [...LIFECYCLE_STATES],
   software: ['Active', 'Expiring Soon', 'Expired'],
   servers: ['Active', 'Faulty', 'Spare'],
 };
@@ -53,10 +54,10 @@ export function filterHardware(list: HardwareAsset[], f: Filters, group: Hardwar
     h =>
       inGroup(h, group) &&
       matchesChoice(f.category, h.category) &&
-      matchesChoice(f.status, h.status) &&
+      matchesChoice(f.status, h.lifecycleState) &&
       matchesChoice(f.department, h.department) &&
       matchesText(f.search, [
-        h.id, assetName(h), assignee(h), h.serialNumber, h.engravedNumber, h.model, h.location, h.operatingSystem,
+        h.id, assetName(h), assignee(h), h.condition, h.serialNumber, h.engravedNumber, h.model, h.location, h.operatingSystem,
         h.ipAddress, h.firmwareVersion, h.serverRole, h.ram, h.hardDisk, h.department, h.yearOfPurchase,
       ]),
   );

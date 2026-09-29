@@ -1,9 +1,9 @@
 /** Column definitions shared by the on-screen tables and the CSV export. Empty values stay empty. */
-import type { HardwareAsset, ServerComponent, SoftwareLicense } from '../../types';
+import type { HardwareAsset, LifecycleState, ServerComponent, SoftwareLicense } from '../../types';
 import { assetName, assignee, type HardwareGroup } from './model';
 import { Badge, StatusBadge, type Column, type Tone } from './ui';
 
-const HARDWARE_TONES: Record<string, Tone> = { 'In Use': 'green', 'In Stock': 'blue', Maintenance: 'amber' };
+const LIFECYCLE_TONES: Record<LifecycleState, Tone> = { 'In Stock': 'blue', Deployed: 'green', 'In Repair': 'amber', Retired: 'slate', Disposed: 'slate' };
 const SOFTWARE_TONES: Record<string, Tone> = { Active: 'green', 'Expiring Soon': 'amber' };
 const COMPONENT_TONES: Record<string, Tone> = { Active: 'green', Spare: 'blue' };
 
@@ -22,7 +22,8 @@ const hw = {
   location: (header: string): HwCol => ({ header, value: h => h.location }),
   mono: (header: string, value: (h: HardwareAsset) => string | undefined): HwCol => ({ header, value: h => value(h) ?? '', className: 'font-mono text-slate-700 whitespace-nowrap' }),
   text: (header: string, value: (h: HardwareAsset) => string | undefined): HwCol => ({ header, value: h => value(h) ?? '' }),
-  status: { header: 'Status', value: h => h.status, render: h => <StatusBadge status={h.status} tones={HARDWARE_TONES} /> },
+  state: { header: 'State', value: h => h.lifecycleState, render: h => <StatusBadge status={h.lifecycleState} tones={LIFECYCLE_TONES} /> },
+  condition: { header: 'Condition', value: h => h.condition ?? '' },
 } satisfies Record<string, HwCol | ((...args: never[]) => HwCol)>;
 
 export function hardwareColumns(group: HardwareGroup): HwCol[] {
@@ -31,26 +32,26 @@ export function hardwareColumns(group: HardwareGroup): HwCol[] {
       return [
         hw.id, hw.name('Device Name'), hw.department, hw.type, hw.model, hw.ip('Management IP'),
         hw.text('Port Capacity', h => h.portCount), hw.mono('Firmware / OS', h => h.firmwareVersion || h.operatingSystem),
-        hw.serial('Serial No.'), hw.location('Rack / Room Location'), hw.status,
+        hw.serial('Serial No.'), hw.location('Rack / Room Location'), hw.condition, hw.state,
       ];
     case 'Server':
       return [
         hw.id, hw.name('Server Name'), hw.department, hw.model, hw.text('Server Role', h => h.serverRole), hw.ip('IP Address'),
         hw.mono('CPU Cores', h => h.cpuCores), hw.mono('RAM', h => h.ram), hw.mono('Storage Array', h => h.hardDisk),
-        hw.text('OS / Hypervisor', h => h.operatingSystem), hw.location('DC Location'), hw.status,
+        hw.text('OS / Hypervisor', h => h.operatingSystem), hw.location('DC Location'), hw.condition, hw.state,
       ];
     case 'Printer':
       return [
         hw.id, hw.name('Printer Name'), hw.department, hw.model, hw.text('Print Technology', h => h.printTechnology),
         hw.text('Connection Type', h => h.connectionType), hw.ip('IP Address'), hw.serial('Serial No.'),
-        hw.location('Office Location'), hw.status,
+        hw.location('Office Location'), hw.condition, hw.state,
       ];
     default:
       return [
         hw.id, ...(group === 'All' ? [hw.category] : []), hw.department, hw.assignee, hw.name('Asset Name'),
         hw.mono('Year', h => h.yearOfPurchase), hw.location('Location'), hw.model, hw.serial('S/N / Service Tag'),
         hw.mono('Engraved No.', h => h.engravedNumber), hw.text('OS / Details', h => h.operatingSystem || h.firmwareVersion),
-        hw.mono('RAM', h => h.ram), hw.mono('Storage', h => h.hardDisk), hw.status,
+        hw.mono('RAM', h => h.ram), hw.mono('Storage', h => h.hardDisk), hw.condition, hw.state,
       ];
   }
 }

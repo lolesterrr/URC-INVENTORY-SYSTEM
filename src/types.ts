@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { LifecycleState } from '../shared/lifecycle';
+
+export type { LifecycleState };
+
 export enum UserRole {
   ADMIN = 'Admin',
   IT_OFFICER = 'IT Officer',
@@ -14,6 +18,7 @@ export type Permission =
   | 'assets:read'
   | 'assets:write'
   | 'assets:delete'
+  | 'assets:dispose'
   | 'alerts:manage'
   | 'audit:read'
   | 'users:manage'
@@ -71,7 +76,10 @@ export interface HardwareAsset {
   operatingSystem: string;
   ram: string;
   hardDisk: string;
-  status: string;
+  lifecycleState: LifecycleState;
+  lifecycleChangedAt?: string | null;
+  /** Free-text condition note, e.g. "Faulty". */
+  condition: string;
   department?: string;
   // Category-specific unique fields
   ipAddress?: string;
@@ -149,6 +157,10 @@ export interface AuditLog {
   action: string;
   details: string;
   timestamp: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
 }
 
 export interface DashboardStats {

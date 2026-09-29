@@ -5,19 +5,22 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
-import { HardwareAsset, UserRole, canEditInventory } from '../types';
+import { LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
+import { HardwareAsset, LifecycleState, UserRole, canEditInventory } from '../types';
 import AssetPassportCard from './AssetPassportCard';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
   currentUserRole: UserRole;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
+  onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
 }
 
 export default function BarcodeScanner({
   hardware,
   currentUserRole,
-  onUpdateHardware
+  onUpdateHardware,
+  onChangeLifecycle,
 }: BarcodeScannerProps) {
   const [selectedMockId, setSelectedMockId] = useState('');
   const [scannedItem, setScannedItem] = useState<HardwareAsset | null>(null);
@@ -26,7 +29,7 @@ export default function BarcodeScanner({
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Field editing state for scanned item
-  const [status, setStatus] = useState<string>('In Stock');
+  const [state, setState] = useState<LifecycleState>('In Stock');
   const [assignee, setAssignee] = useState('');
   const [location, setLocation] = useState('');
 
@@ -36,7 +39,7 @@ export default function BarcodeScanner({
   // Load editing state when scanned item changes
   useEffect(() => {
     if (scannedItem) {
-      setStatus(scannedItem.status);
+      setState(scannedItem.lifecycleState);
       setAssignee(scannedItem.assignee ?? scannedItem.user);
       setLocation(scannedItem.location);
     }
@@ -107,14 +110,15 @@ export default function BarcodeScanner({
     try {
       const updated: HardwareAsset = {
         ...scannedItem,
-        status,
         // The server reads `user` before its legacy alias `assignee`, so set both.
         user: assignee.trim(),
         assignee: assignee.trim(),
         location: location.trim(),
       };
       await onUpdateHardware(updated);
-      setScannedItem(updated);
+      // State changes have their own audited endpoint.
+      if (state !== scannedItem.lifecycleState) await onChangeLifecycle(scannedItem.id, state, '');
+      setScannedItem({ ...updated, lifecycleState: state });
       setScanMessage(`Successfully saved deployment updates for URC asset ${updated.id}.`);
     } catch (err) {
       setScanMessage(err instanceof Error ? err.message : 'An error occurred while updating the asset.');
@@ -251,16 +255,17 @@ export default function BarcodeScanner({
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Deployment Status</label>
+                    <label htmlFor="scanner-state" className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Lifecycle state</label>
                     <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as any)}
+                      id="scanner-state"
+                      value={state}
+                      onChange={(e) => setState(e.target.value as LifecycleState)}
                       className="mt-1 w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded focus:outline-none"
                     >
-                      <option value="In Use">In Use</option>
-                      <option value="In Stock">In Stock</option>
-                      <option value="Maintenance">Maintenance</option>
-                      <option value="Retired">Retired</option>
+                      {/* Moves that need a reason (Retired, Disposed) are made from the register. */}
+                      {[scannedItem.lifecycleState, ...LIFECYCLE_TRANSITIONS[scannedItem.lifecycleState].filter(s => !NOTE_REQUIRED.includes(s))].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -294,13 +299,13 @@ export default function BarcodeScanner({
                 </div>
 
                 <div className="bg-yellow-50/50 p-2.5 rounded border border-yellow-100/50 text-[10px] text-slate-500 leading-normal font-medium">
-                  Field technicians can perform quick status overrides. Data deletions are restricted inside the quick dispatch terminal.
+                  Field technicians can update the assignee, location and state here. To retire or dispose of an asset, use “Change state” in the register, which asks for a reason.
                 </div>
 
                 <div className="flex justify-end gap-2">
                   <button
                     type="submit"
-                    disabled={isUpdating || !canEditInventory(currentUserRole)}
+                    disabled={isUpdating || !canEditInventory(currentUserRole) || scannedItem.lifecycleState === 'Disposed'}
                     className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 font-mono uppercase"
                   >
                     {isUpdating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5 text-yellow-500 stroke-[3px]" />}

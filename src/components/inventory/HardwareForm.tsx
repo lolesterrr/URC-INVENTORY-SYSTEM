@@ -1,12 +1,13 @@
-import type { HardwareAsset } from '../../types';
+import { INITIAL_STATES } from '../../../shared/lifecycle';
+import type { HardwareAsset, LifecycleState } from '../../types';
 import { FormModal, useDraft, type FormContext } from './FormModal';
-import { assetName, assignee, HARDWARE_CATEGORIES, STATUSES, type HardwareCategory } from './model';
-import { DepartmentField, Field, SelectField, StatusOptions } from './ui';
+import { assetName, assignee, HARDWARE_CATEGORIES, type HardwareCategory } from './model';
+import { DepartmentField, Field, SelectField } from './ui';
 
 const DEFAULT_DEPARTMENT = 'INFORMATION COMMUNICATION AND TECHNOLOGY';
 
 const blank = {
-  id: '', category: 'Desktop', department: DEFAULT_DEPARTMENT, assetName: '', user: '', model: '', status: 'In Stock',
+  id: '', category: 'Desktop', department: DEFAULT_DEPARTMENT, assetName: '', user: '', model: '', condition: '', lifecycleState: 'In Stock',
   yearOfPurchase: '', location: '', serialNumber: '', engravedNumber: '', operatingSystem: '', ram: '', hardDisk: '',
   ipAddress: '', portCount: '', firmwareVersion: '', serverRole: '', cpuCores: '', connectionType: '', printTechnology: '',
 };
@@ -101,6 +102,7 @@ export default function HardwareForm({
       ...initial,
       ...values,
       category: values.category as HardwareCategory,
+      lifecycleState: values.lifecycleState as LifecycleState,
       name: values.assetName,
       assignee: values.user,
     });
@@ -116,8 +118,14 @@ export default function HardwareForm({
         <DepartmentField {...bind('department')} />
         {fieldsFor(draft.category).map(renderField)}
         {SHARED_FIELDS.map(renderField)}
-        <Field label="Status" required list="hardware-statuses" placeholder="e.g. In Use" {...bind('status')} />
-        <StatusOptions id="hardware-statuses" statuses={STATUSES.hardware} />
+        <Field label="Condition" placeholder="e.g. Good, Faulty, Needs 1 TB upgrade" {...bind('condition')} />
+        {ctx.mode === 'add' ? (
+          <SelectField label="Starting state" options={INITIAL_STATES} value={draft.lifecycleState as (typeof INITIAL_STATES)[number]} onChange={bind('lifecycleState').onChange} />
+        ) : (
+          <p className="text-[10px] text-slate-500 self-end pb-2">
+            State: <strong className="text-slate-800">{initial?.lifecycleState}</strong>. Use “Change state” in the register to move it.
+          </p>
+        )}
       </div>
     </FormModal>
   );

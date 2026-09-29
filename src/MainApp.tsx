@@ -103,10 +103,12 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             software={data.software}
             serverComponents={data.serverComponents}
             currentUserRole={currentUser.role}
+            permissions={currentUser.permissions}
             username={currentUser.username}
             onAddHardware={actions.addHardware}
             onUpdateHardware={actions.updateHardware}
             onDeleteHardware={actions.deleteHardware}
+            onChangeLifecycle={actions.changeLifecycle}
             onAddSoftware={actions.addSoftware}
             onUpdateSoftware={actions.updateSoftware}
             onDeleteSoftware={actions.deleteSoftware}
@@ -118,7 +120,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
           />
         );
       case 'barcode':
-        return <BarcodeScanner hardware={data.hardware} currentUserRole={currentUser.role} onUpdateHardware={actions.updateHardware} />;
+        return <BarcodeScanner hardware={data.hardware} currentUserRole={currentUser.role} onUpdateHardware={actions.updateHardware} onChangeLifecycle={actions.changeLifecycle} />;
       case 'notifications':
         return (
           <NotificationCenter

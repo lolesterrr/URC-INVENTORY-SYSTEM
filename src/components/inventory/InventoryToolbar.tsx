@@ -97,8 +97,8 @@ export default function InventoryToolbar({
               {URC_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
-          <select aria-label="Status" value={filters.status} onChange={e => set({ status: e.target.value })} className={selectClass}>
-            <option value="All">All statuses</option>
+          <select aria-label={tab === 'hardware' ? 'Lifecycle state' : 'Status'} value={filters.status} onChange={e => set({ status: e.target.value })} className={selectClass}>
+            <option value="All">{tab === 'hardware' ? 'All states' : 'All statuses'}</option>
             {STATUSES[tab].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>

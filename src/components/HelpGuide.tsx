@@ -64,6 +64,7 @@ export default function HelpGuide() {
               <li><strong className="font-semibold text-slate-800">Software Licenses</strong>: Track subscription contracts, product keys, and active seats.</li>
               <li><strong className="font-semibold text-slate-800">Server Parts</strong>: Monitors CPU cores, NICs, and redundant hot-plug PSUs inside rack slots.</li>
               <li><strong className="font-semibold text-slate-800">Filter Console</strong>: Search dynamically by item ID, specification, category, status, or assignee.</li>
+              <li><strong className="font-semibold text-slate-800">Lifecycle states</strong>: Each hardware asset is In Stock, Deployed, In Repair, Retired or Disposed. Use the “Change state” button on a row; retiring or disposing needs a reason, and only an Admin or the Manager can mark an asset Disposed, which is final. The History button shows every change to that asset.</li>
             </ul>
           </div>
 
@@ -82,7 +83,7 @@ export default function HelpGuide() {
               <li>Click the barcode icon on any hardware asset row to view its **IT Asset Passport**.</li>
               <li>Open the **Barcode Scan Center** from the primary sidebar to trigger simulated scans.</li>
               <li>Select a Mock Asset ID from the dropdown list and click **Scan Barcode** to decode.</li>
-              <li>The system instantly retrieves live dispatch logs, allowing you to update status, assignee, or station office in 1 click!</li>
+              <li>The system instantly retrieves live dispatch logs, allowing you to update the lifecycle state, assignee, or station office in 1 click!</li>
             </ol>
           </div>
 

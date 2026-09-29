@@ -9,6 +9,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   'assets:read': 'View inventory, dashboards and reports',
   'assets:write': 'Add and edit inventory records',
   'assets:delete': 'Archive inventory records',
+  'assets:dispose': 'Approve disposals (mark retired assets as disposed)',
   'alerts:manage': 'Resolve alerts and run inventory checks',
   'audit:read': 'View the change history',
   'users:manage': 'Manage user accounts',

@@ -3,12 +3,14 @@
  * Building blocks live in ./inventory/.
  */
 import { useState } from 'react';
-import { HardwareAsset, ServerComponent, SoftwareLicense, UserRole, canEditInventory } from '../types';
+import { HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, UserRole } from '../types';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
 import type { FormContext } from './inventory/FormModal';
 import HardwareForm from './inventory/HardwareForm';
+import { HistoryDialog } from './inventory/HistoryDialog';
 import InventoryToolbar from './inventory/InventoryToolbar';
+import { LifecycleDialog } from './inventory/LifecycleDialog';
 import {
   assetName, EMPTY_FILTERS, filterHardware, filterServerComponents, filterSoftware, HARDWARE_GROUPS, inGroup, nextId, toCsv,
   type Filters, type HardwareGroup, type InventoryTab,
@@ -22,10 +24,12 @@ interface InventoryTablesProps {
   software: SoftwareLicense[];
   serverComponents: ServerComponent[];
   currentUserRole: UserRole;
+  permissions: Permission[];
   username: string;
   onAddHardware: (item: HardwareAsset) => Promise<void>;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onDeleteHardware: (id: string) => Promise<void>;
+  onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
   onAddSoftware: (item: SoftwareLicense) => Promise<void>;
   onUpdateSoftware: (item: SoftwareLicense) => Promise<void>;
   onDeleteSoftware: (id: string) => Promise<void>;
@@ -41,7 +45,9 @@ type Dialog =
   | { kind: 'software'; item: SoftwareLicense | null }
   | { kind: 'servers'; item: ServerComponent | null }
   | { kind: 'archive'; target: ArchiveTarget; run: () => Promise<void> }
-  | { kind: 'barcode'; id: string };
+  | { kind: 'barcode'; id: string }
+  | { kind: 'lifecycle'; item: HardwareAsset }
+  | { kind: 'history'; id: string; name: string };
 
 function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
   // The BOM makes Excel read the file as UTF-8.
@@ -57,13 +63,15 @@ function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
 }
 
 export default function InventoryTables(props: InventoryTablesProps) {
-  const { hardware, software, serverComponents, currentUserRole, username, selectedSubTab: tab } = props;
+  const { hardware, software, serverComponents, currentUserRole, permissions, username, selectedSubTab: tab } = props;
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [group, setGroup] = useState<HardwareGroup>('All');
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
-  // UI hint only; the server enforces the same rule.
-  const canEdit = canEditInventory(currentUserRole);
+  // UI hints only; the server enforces the same rules.
+  const canEdit = permissions.includes('assets:write');
+  const canDispose = permissions.includes('assets:dispose');
+  const canReadHistory = permissions.includes('audit:read');
   const close = () => setDialog(null);
 
   const shownHardware = filterHardware(hardware, filters, group);
@@ -122,6 +130,18 @@ export default function InventoryTables(props: InventoryTablesProps) {
         return <ArchiveDialog target={dialog.target} onConfirm={dialog.run} onClose={close} />;
       case 'barcode':
         return <BarcodeDialog id={dialog.id} onClose={close} />;
+      case 'lifecycle':
+        return (
+          <LifecycleDialog
+            asset={dialog.item}
+            canWrite={canEdit}
+            canDispose={canDispose}
+            onSubmit={(to, note) => props.onChangeLifecycle(dialog.item.id, to, note)}
+            onClose={close}
+          />
+        );
+      case 'history':
+        return <HistoryDialog id={dialog.id} name={dialog.name} onClose={close} />;
     }
   };
 
@@ -167,6 +187,9 @@ export default function InventoryTables(props: InventoryTablesProps) {
                   canEdit={canEdit}
                   label={assetName(h) || h.id}
                   onBarcode={() => setDialog({ kind: 'barcode', id: h.id })}
+                  onLifecycle={canEdit || canDispose ? () => setDialog({ kind: 'lifecycle', item: h }) : undefined}
+                  onHistory={canReadHistory ? () => setDialog({ kind: 'history', id: h.id, name: assetName(h) || h.id }) : undefined}
+                  editLocked={h.lifecycleState === 'Disposed'}
                   onEdit={() => setDialog({ kind: 'hardware', item: h })}
                   onArchive={() => archive({ kind: 'hardware asset', id: h.id, name: assetName(h) || h.id }, () => props.onDeleteHardware(h.id))}
                 />
