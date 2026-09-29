@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
 import { HardwareAsset, UserRole, canEditInventory } from '../types';
+import AssetPassportCard from './AssetPassportCard';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
@@ -107,33 +108,19 @@ export default function BarcodeScanner({
       const updated: HardwareAsset = {
         ...scannedItem,
         status,
-        assignee: assignee || 'N/A',
-        location: location || 'HQ, Kampala'
+        // The server reads `user` before its legacy alias `assignee`, so set both.
+        user: assignee.trim(),
+        assignee: assignee.trim(),
+        location: location.trim(),
       };
       await onUpdateHardware(updated);
       setScannedItem(updated);
       setScanMessage(`Successfully saved deployment updates for URC asset ${updated.id}.`);
     } catch (err) {
-      console.error(err);
-      setScanMessage('An error occurred while updating the asset.');
+      setScanMessage(err instanceof Error ? err.message : 'An error occurred while updating the asset.');
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const renderSimpleBarcodeStripes = (id: string) => {
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const bars = [];
-    for (let i = 0; i < 22; i++) {
-      const width = ((hash + i) % 3 === 0) ? 'w-1' : 'w-0.5';
-      bars.push(<div key={i} className={`h-8 bg-slate-900 ${width} mr-0.5`}></div>);
-    }
-    return (
-      <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-200">
-        <div className="flex items-center justify-center bg-white">{bars}</div>
-        <span className="text-[8px] font-mono font-bold tracking-wider text-slate-500 mt-1">{id}</span>
-      </div>
-    );
   };
 
   return (
@@ -256,114 +243,7 @@ export default function BarcodeScanner({
           {scannedItem ? (
             <div className="space-y-3 animate-fade-in">
               
-              {/* Asset passport card */}
-              <div className="p-3 bg-slate-50 rounded border border-slate-100 space-y-2">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-slate-400">
-                      <Laptop className="h-3 w-3" />
-                      <span className="text-[10px] font-mono font-bold text-slate-800">{scannedItem.id}</span>
-                    </div>
-                    <h4 className="text-[13px] font-bold text-slate-900">{scannedItem.assetName || scannedItem.name}</h4>
-                  </div>
-                  <div>
-                    {renderSimpleBarcodeStripes(scannedItem.id)}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Category</span>
-                    <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded">{scannedItem.category || 'Hardware'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Department</span>
-                    <span className="font-bold text-slate-800">{scannedItem.department || 'INFORMATION COMMUNICATION AND TECHNOLOGY'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">User / Assignee</span>
-                    <span className="font-bold text-slate-800">{scannedItem.user || scannedItem.assignee}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Location</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.location}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Model</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.model || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Serial No. / Tag</span>
-                    <span className="font-mono text-slate-700">{scannedItem.serialNumber}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Engraved Number</span>
-                    <span className="font-mono text-slate-700">{scannedItem.engravedNumber || 'N/A'}</span>
-                  </div>
-
-                  {/* Network / Switch / Router Unique Fields */}
-                  {scannedItem.ipAddress && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">IP Address</span>
-                      <span className="font-mono font-bold text-blue-700">{scannedItem.ipAddress}</span>
-                    </div>
-                  )}
-                  {scannedItem.portCount && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Port Count / Interface</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.portCount}</span>
-                    </div>
-                  )}
-                  {scannedItem.firmwareVersion && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Firmware / OS</span>
-                      <span className="font-mono text-slate-700">{scannedItem.firmwareVersion}</span>
-                    </div>
-                  )}
-
-                  {/* Server Unique Fields */}
-                  {scannedItem.serverRole && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Server Role</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.serverRole}</span>
-                    </div>
-                  )}
-                  {scannedItem.cpuCores && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">CPU Cores</span>
-                      <span className="font-mono text-slate-700">{scannedItem.cpuCores}</span>
-                    </div>
-                  )}
-
-                  {/* Printer Unique Fields */}
-                  {scannedItem.printTechnology && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Print Technology</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.printTechnology}</span>
-                    </div>
-                  )}
-                  {scannedItem.connectionType && (
-                    <div>
-                      <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Connection Type</span>
-                      <span className="font-semibold text-slate-700">{scannedItem.connectionType}</span>
-                    </div>
-                  )}
-
-                  {/* Standard Computer / Default Fields */}
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">OS / Firmware</span>
-                    <span className="font-semibold text-slate-700">{scannedItem.operatingSystem || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">RAM</span>
-                    <span className="font-mono text-slate-700">{scannedItem.ram || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block uppercase text-[8.5px]">HARDDISK / Storage</span>
-                    <span className="font-mono text-slate-700">{scannedItem.hardDisk || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+              <AssetPassportCard item={scannedItem} />
 
               {/* Quick Update Form */}
               <form onSubmit={handleApplyQuickUpdate} className="space-y-3">

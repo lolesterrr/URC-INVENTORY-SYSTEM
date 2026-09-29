@@ -11,13 +11,13 @@ Turn the internship prototype into a production-grade, **self-hosted** IT invent
 ## 2. Current state (after Phase 1+2, 2026-09-29)
 | Area | Now |
 |---|---|
-| Frontend | React 19 + Vite + Tailwind. `App.tsx` decides which screen to show from the session. `MainApp.tsx` is about 700 lines and `InventoryTables.tsx` about 2,000; both still need splitting (Phase 4). |
+| Frontend | React 19 + Vite + Tailwind. `App.tsx` picks the screen from the session. `MainApp.tsx` is the shell; `hooks/useInventoryData.ts` loads and saves through `src/api.ts`; `components/layout/` holds the sidebar and top bar; `components/inventory/` holds the column-driven tables, forms and dialogs. Every component is under 400 lines. |
 | Backend | `server/`: Express 5, routes in separate files, each request body validated with zod, helmet security headers. |
 | Data | SQLite via better-sqlite3 + Drizzle, in `storage/inventory.db` (or `DATA_DIR`). Migrations in `drizzle/` run at startup. Deletes are soft deletes. |
 | Auth | Server-side sessions (httpOnly, SameSite=Strict cookie), argon2id password hashes, lockout after 5 failures, forced password change, 4 roles. |
 | Audit | `audit_log` table records before and after values. SQLite triggers block UPDATE and DELETE. |
 | AI / cloud | Removed (Firebase, Gemini). |
-| Tests | `tests/api.test.ts` (16: auth, roles, validation, audit, import) and `tests/backup.test.ts` (10: retention, backup, second copy, API, restore drill). |
+| Tests | `tests/api.test.ts` (16: auth, roles, validation, audit, import), `tests/backup.test.ts` (10: retention, backup, second copy, API, restore drill) and `tests/inventory-model.test.ts` (4: filters, ID suggestion, CSV escaping, no invented values). |
 | Backups | `server/services/backup.ts`: nightly at 02:00 plus catch-up at startup, integrity-checked, 7/4/12 retention, optional second copy, Admin page, `npm run restore`. |
 
 ## 3. Findings: pitfalls and vulnerabilities
@@ -36,7 +36,7 @@ Severity: 🔴 critical · 🟠 high · 🟡 medium
 | F9 | 🟡 | No input validation, rate limiting, security headers (helmet), CSRF protection or HTTPS. | `server.ts` | ✅ validation, rate limit, helmet, SameSite cookie; HTTPS is ready but needs a certificate |
 | F10 | 🟡 | The port is hard-coded (3000). `clean` uses `rm -rf`, which fails on Windows. The package is still named `react-example`. | `server.ts:18`, `package.json` | ✅ fixed |
 | F11 | 🟡 | There is no backup or restore mechanism. | — | ✅ fixed (nightly verified backups, retention, restore script) |
-| F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` | ◐ tests added; component split is Phase 4 |
+| F12 | 🟡 | There are no tests, and components are too large to maintain. | `src/components/*` | ✅ fixed (tests added; components split, all under 400 lines) |
 
 | F13 | 🟠 | `npm audit`: 7 known vulnerabilities (2 high: `nanoid`, `browserslist`; 5 moderate incl. `express`/`qs`). All fixable via `npm audit fix`. | `package-lock.json` | ✅ fixed (4 moderate issues remain, all inside the dev-only drizzle-kit tool) |
 
@@ -76,13 +76,13 @@ Line-by-line route review and the git-history secret check are still pending (T2
 1. **Security foundation**: ✅ server-side auth and role-based access, remove hard-coded secrets, rotate the password, purge PII from the repo, validation and helmet.
 2. **Internal database**: ✅ schema, ORM, migration script from `inventory.json`, remove Firebase.
 3. **Backups**: ✅ scheduled backup, retention, restore script, restore drill.
-4. **Refactor**: ← *next* split `server.ts` into routes, services and db. Split large components. Add tests.
-5. **v1 features**: from the comparison doc.
+4. **Refactor**: ✅ split `server.ts` into routes, services and db. Split large components. Add tests.
+5. **v1 features**: ← *next* from the comparison doc.
 6. **Windows deployment**: Windows service, HTTPS, firewall rule, installation runbook (`docs/DEPLOYMENT.md`).
 
 ## 7. Tasks
 ### Active
-- [ ] T8 Phase 4: split `MainApp.tsx` (~720 lines) and `InventoryTables.tsx` (~2,000 lines) into components under ~400 lines each.
+- [ ] T9 Phase 5: choose the first v1 features from the Must list in `docs/FEATURE_COMPARISON.md` (check-out/check-in with per-asset history, lifecycle states, departments/staff/locations as records, …) and record the order here before starting.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
@@ -96,3 +96,8 @@ Line-by-line route review and the git-history secret check are still pending (T2
   - Design: `server/services/backup.ts` (`BackupService`). Files are named `inventory-YYYYMMDD-HHMMSS.db` (local time, safe on Windows), written as `.tmp`, checked, then renamed. Retention keeps the newest backup of each of the last 7 days, 4 ISO weeks and 12 months, applied to both folders. The scheduler runs at `BACKUP_HOUR` (default 2), and at startup it catches up if the newest backup is more than 24 h old. `GET/POST /api/backups` need `backups:manage` (Admin). No download endpoint, because backups contain password hashes.
   - Restore: `npm run restore -- <file>` with the service stopped. The server writes `server.pid` next to the database and restore refuses while that process is alive. Before overwriting, it checks the backup and saves the current DB as `pre-restore-*.db` in the backup folder.
   - Verified: 26/26 tests; a production build took a catch-up backup at startup and a manual one through the UI; restore refused while the server was running, then worked once it was stopped, and the server started again on the restored DB.
+- [x] T8 Phase 4 (2026-09-29): split `MainApp.tsx` (~720 lines) and `InventoryTables.tsx` (~2,000 lines) into components under ~400 lines each.
+  - Plan: `src/components/inventory/` gets a generic `DataTable` driven by column definitions. The same columns feed the CSV export, so the table and the export can't drift apart. There are separate form components for hardware, software and server parts, plus modals and pure filter/CSV helpers. MainApp is split into `useInventoryData` (loading and saving through `src/api.ts` only), `Sidebar`, `TopBar` and `ProfileView`.
+  - Fixes made during the split: tables and CSV showed invented values for empty fields (e.g. IP 10.100.1.1), and the "new asset" form pre-filled fake serials, keys and costs, while blank fields were saved as "N/A". Both now show an empty value (`—`). Only ID, name and status are required. The next ID is suggested in sequence (HW-083) instead of at random. The header showed an "Admin" badge for every role. Load and save errors were dropped silently and now appear on screen. CSV cells starting with `= + - @` are escaped to prevent formula injection. The delete dialog now says "archive", matching the soft delete.
+  - Also fixed: reassigning a device in the Barcode Scan Center never saved, because the old `user` value overrode the new `assignee` value on the server. The scanner's passport card is now its own component, and scanner errors show the server's message. Record IDs are URL-encoded in API calls.
+  - Verified: lint, 30/30 tests; a production build driven in Chromium covered adding (with suggested IDs), a duplicate-ID error shown inline, editing, search, the barcode dialog, archiving, software and server-part forms, CSV export (no invented values, formula escaped), scanner reassignment and Auditor read-only access, with no console errors.

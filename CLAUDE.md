@@ -31,7 +31,9 @@ React 19 + Vite + Tailwind (`src/`). Express 5 + TypeScript (`server/`). SQLite 
 - Every API route declares `requirePermission(...)`. Roles are mapped to permissions in `server/auth/permissions.ts`.
 - Every data change calls `recordAudit()` with before/after values. `audit_log` is append-only.
 - Inventory deletes are soft deletes (`deleted_at`).
-- The frontend calls the API through `src/api.ts` only.
+- The frontend calls the API through `src/api.ts` only (data loading and saving: `src/hooks/useInventoryData.ts`).
+- Inventory tables are column-driven: add or change a column in `src/components/inventory/columns.tsx` and it appears in both the table and the CSV export.
+- Never display or save invented placeholder values (fake IPs, serials, "N/A") for empty fields. Leave them empty; the UI shows `—`.
 
 ## Coding standards
 - TypeScript strict and typed. No `any` in new code.
