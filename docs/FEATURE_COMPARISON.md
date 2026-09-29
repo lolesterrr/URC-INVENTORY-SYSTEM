@@ -21,8 +21,8 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Servers and components | ◐ | ✅ | ✅ | ✅ | ✅ | — |
 | Accessories and consumables (toner, mice, cables) with stock levels | ✅ | ✅ | ❌ | ✅ | ❌ | Later |
 | **Check-out / check-in** to staff with history | ✅ | ✅ | ◐ | ✅ | ❌ (free-text "user" field) | **Must** |
-| Full asset history timeline (who had it, repairs, moves) | ✅ | ✅ | ✅ | ✅ | ◐ (global audit log only) | **Must** |
-| Lifecycle states (in stock → deployed → in repair → retired → disposed) | ✅ | ✅ | ✅ | ✅ | ◐ (status only) | **Must** |
+| Full asset history timeline (who had it, repairs, moves) | ✅ | ✅ | ✅ | ✅ | ◐ (per-asset History from the audit log; check-out still to come) | **Must** |
+| Lifecycle states (in stock → deployed → in repair → retired → disposed) | ✅ | ✅ | ✅ | ✅ | ✅ (2026-09-29) | **Must** |
 | Custom fields per category | ✅ | ✅ | ✅ | ✅ | ❌ | Later |
 | Hierarchical locations (Region → Station → Office) | ✅ | ✅ | ✅ | ✅ | ◐ (flat text) | **Must** |
 | Departments and staff as real records, not text | ✅ | ✅ | ✅ (via AD) | ✅ | ❌ | **Must** |

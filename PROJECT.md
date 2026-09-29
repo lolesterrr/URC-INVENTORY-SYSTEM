@@ -15,9 +15,10 @@ Turn the internship prototype into a production-grade, **self-hosted** IT invent
 | Backend | `server/`: Express 5, routes in separate files, each request body validated with zod, helmet security headers. |
 | Data | SQLite via better-sqlite3 + Drizzle, in `storage/inventory.db` (or `DATA_DIR`). Migrations in `drizzle/` run at startup. Deletes are soft deletes. |
 | Auth | Server-side sessions (httpOnly, SameSite=Strict cookie), argon2id password hashes, lockout after 5 failures, forced password change, 4 roles. |
-| Audit | `audit_log` table records before and after values. SQLite triggers block UPDATE and DELETE. |
+| Audit | `audit_log` table records before and after values. SQLite triggers block UPDATE and DELETE. `GET /api/hardware/:id/history` gives one asset's timeline. |
+| Lifecycle | Hardware has a lifecycle state (In Stock, Deployed, In Repair, Retired, Disposed) plus a free-text condition. Rules are in `shared/lifecycle.ts`; changes only through `POST /api/hardware/:id/lifecycle`. |
 | AI / cloud | Removed (Firebase, Gemini). |
-| Tests | `tests/api.test.ts` (16: auth, roles, validation, audit, import), `tests/backup.test.ts` (10: retention, backup, second copy, API, restore drill) and `tests/inventory-model.test.ts` (4: filters, ID suggestion, CSV escaping, no invented values). |
+| Tests | `tests/api.test.ts` (16: auth, roles, validation, audit, import), `tests/backup.test.ts` (10: retention, backup, second copy, API, restore drill), `tests/lifecycle.test.ts` (10: transitions, permissions, history, migration and import mapping) and `tests/inventory-model.test.ts` (6: filters, ID suggestion, CSV escaping, no invented values, state/condition columns, history diff). |
 | Backups | `server/services/backup.ts`: nightly at 02:00 plus catch-up at startup, integrity-checked, 7/4/12 retention, optional second copy, Admin page, `npm run restore`. |
 
 ## 3. Findings: pitfalls and vulnerabilities
@@ -77,17 +78,32 @@ Line-by-line route review and the git-history secret check are still pending (T2
 2. **Internal database**: ✅ schema, ORM, migration script from `inventory.json`, remove Firebase.
 3. **Backups**: ✅ scheduled backup, retention, restore script, restore drill.
 4. **Refactor**: ✅ split `server.ts` into routes, services and db. Split large components. Add tests.
-5. **v1 features**: ← *next* from the comparison doc.
+5. **v1 features**: ← *in progress* (order in §7 T9).
 6. **Windows deployment**: Windows service, HTTPS, firewall rule, installation runbook (`docs/DEPLOYMENT.md`).
 
 ## 7. Tasks
 ### Active
-- [ ] T9 Phase 5: choose the first v1 features from the Must list in `docs/FEATURE_COMPARISON.md` (check-out/check-in with per-asset history, lifecycle states, departments/staff/locations as records, …) and record the order here before starting.
+- [ ] T9 Phase 5, v1 features. Order chosen by the user (2026-09-29):
+  1. **Lifecycle states** (T9a) ✅
+  2. Check-out / check-in with per-asset history
+  3. Departments, staff and locations as real records
+  4. Purchase and warranty fields with in-app expiry alerts
+  5. Then CSV import/export, QR labels and standard reports, in an order to agree later.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
 
 ### Completed
+- [x] T9a Lifecycle states (2026-09-29) (hardware only; software and server parts keep their own statuses).
+  - States: In Stock → Deployed → In Repair → Retired → Disposed. Allowed moves: In Stock, Deployed and In Repair can move to each other or to Retired. Retired can go back to In Stock or move on to Disposed. Disposed is final.
+  - Data: the free-text `status` was really a condition note (legacy values: "OK", "Faulty", "To be disposed", "Upgrade to 1TB"…). Migration 0002 (hand-written SQL; snapshot generated from the schema) adds `lifecycle_state`, `lifecycle_changed_at` and `condition`, then drops `status`. Lifecycle words map to states ("In Use"→Deployed, "Maintenance"→In Repair, "Retired", "In Stock"). Any other text is kept as the condition note, and its state is taken from the assignee (assigned → Deployed, else In Stock). Nothing is set to Retired or Disposed automatically; the migration writes one audit entry. `npm run import-json` uses the same mapping.
+  - API: `POST /api/hardware/:id/lifecycle {to, note}` is the only way to change a state (the create form can set the starting state, but not Disposed). It rejects moves that are not allowed. Retired and Disposed need a note (reason, board-of-survey ref.). It records "Lifecycle Change" in the audit log. Disposed needs the new `assets:dispose` permission (Admin, Manager, matching "Manager approves disposals"). Every other move needs `assets:write`. Disposed assets are read-only (PUT → 409).
+  - `GET /api/hardware/:id/history` (`audit:read`) returns that asset's audit entries, oldest first. This is the start of the per-asset timeline; check-out will add to it.
+  - Rules live in `shared/lifecycle.ts` (no imports), used by the server and bundled into the UI.
+  - UI: a lifecycle state column and badge, plus a Condition column (tables and CSV). Filter by state. A "Change state" dialog shows only the allowed moves. A History dialog. The form has a Condition field, and a starting state when adding. The scanner changes state through the new endpoint.
+  - Not in this task: the assignee is not cleared when an asset leaves Deployed (check-out/check-in, T9b, will link the two). There is no disposal approval workflow yet (v1.1).
+  - Verified: lint, 42/42 tests (including the migration from a 0001 database matching the TS mapping, and the legacy import). Upgrade drill: a database built by the previous release (448804f) from the legacy JSON was opened by the new build. 82 records became 80 Deployed and 2 In Stock, all condition notes were kept, and the audit entry was written. Browser (Chromium, production build): as IT Officer, filter by state, Deployed → In Repair → Retired (reason required), edit condition, History with field diff, starting-state options, scanner quick move; as Manager, Retired → Disposed; the disposed row is read-only for everyone; the Auditor sees History but no state button. No console errors other than the expected pre-sign-in `/api/auth/me` 401.
+  - Follow-ups: 16 legacy records have the condition "To be disposed" / "for disposal" but stay Deployed. An IT Officer should retire them with a reason (filter the register by condition). The startup catch-up backup runs *after* migrations, so take a manual backup before upgrading (add this to the deployment runbook, or make the server back up before applying pending migrations).
 - [x] T0 Initial scan. Created `CLAUDE.md`, `PROJECT.md` and the draft `docs/FEATURE_COMPARISON.md`.
 - [x] T1 v1 feature scope frozen: see the Priority column in `docs/FEATURE_COMPARISON.md`.
 - [x] T3 Decisions D2–D7 and the roles table recorded (2026-09-29).
