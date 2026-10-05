@@ -59,6 +59,10 @@ export function useInventoryData() {
     deleteHardware: (id: string) => change(`/api/hardware/${encodeURIComponent(id)}`, 'DELETE'),
     changeLifecycle: (id: string, to: LifecycleState, note: string) =>
       change(`/api/hardware/${encodeURIComponent(id)}/lifecycle`, 'POST', { to, note }),
+    checkoutHardware: (id: string, assignee: string, dueBack: string, notes: string) =>
+      change(`/api/hardware/${encodeURIComponent(id)}/checkout`, 'POST', { assignee, dueBack, notes }),
+    checkinHardware: (id: string, notes: string) =>
+      change(`/api/hardware/${encodeURIComponent(id)}/checkin`, 'POST', { notes }),
     addSoftware: (item: SoftwareLicense) => change('/api/software', 'POST', item),
     updateSoftware: (item: SoftwareLicense) => change(`/api/software/${encodeURIComponent(item.id)}`, 'PUT', item),
     deleteSoftware: (id: string) => change(`/api/software/${encodeURIComponent(id)}`, 'DELETE'),

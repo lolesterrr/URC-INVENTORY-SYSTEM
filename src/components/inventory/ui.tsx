@@ -1,6 +1,6 @@
 /** Small building blocks shared by the inventory registers, forms and dialogs. */
 import React, { type ReactNode } from 'react';
-import { Edit2, History, Tag, Trash2, Workflow, X } from 'lucide-react';
+import { Edit2, History, LogIn, LogOut, Tag, Trash2, Workflow, X } from 'lucide-react';
 import { URC_DEPARTMENTS } from '../../types';
 
 export interface Column<T> {
@@ -83,6 +83,8 @@ export function RowActions({
   onBarcode,
   onLifecycle,
   onHistory,
+  onCheckout,
+  onCheckin,
   editLocked,
 }: {
   canEdit: boolean;
@@ -92,11 +94,23 @@ export function RowActions({
   onBarcode?: () => void;
   onLifecycle?: () => void;
   onHistory?: () => void;
+  onCheckout?: () => void;
+  onCheckin?: () => void;
   /** Record is read-only (e.g. a disposed asset): editing is off, archiving stays available. */
   editLocked?: boolean;
 }) {
   return (
     <>
+      {onCheckout && (
+        <button onClick={onCheckout} title="Check out" aria-label={`Check out ${label}`} className="p-1 hover:bg-green-50 text-green-700 rounded transition-colors">
+          <LogOut className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {onCheckin && (
+        <button onClick={onCheckin} title="Check in" aria-label={`Check in ${label}`} className="p-1 hover:bg-blue-50 text-blue-700 rounded transition-colors">
+          <LogIn className="h-3.5 w-3.5" />
+        </button>
+      )}
       {onLifecycle && (
         <button onClick={onLifecycle} title="Change state" aria-label={`Change state of ${label}`} className="p-1 hover:bg-amber-50 text-amber-700 rounded transition-colors">
           <Workflow className="h-3.5 w-3.5" />

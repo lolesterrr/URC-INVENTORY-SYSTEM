@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, real, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { LIFECYCLE_STATES, type LifecycleState } from '../../shared/lifecycle';
 
 const timestamps = {
@@ -80,6 +80,27 @@ export const hardware = sqliteTable(
     index('hardware_serial_idx').on(t.serialNumber),
     index('hardware_department_idx').on(t.department),
     index('hardware_lifecycle_idx').on(t.lifecycleState),
+  ],
+);
+
+// One open row (checked_in_at IS NULL) per hardware asset at a time, enforced by a partial unique index.
+// Changes go through POST /api/hardware/:id/checkout and /checkin.
+export const assetAssignments = sqliteTable(
+  'asset_assignments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    hardwareId: text('hardware_id').notNull().references(() => hardware.id),
+    assignee: text('assignee').notNull(),
+    checkedOutAt: text('checked_out_at').notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    checkedOutBy: text('checked_out_by').notNull(),
+    dueBack: text('due_back'),
+    checkedInAt: text('checked_in_at'),
+    checkedInBy: text('checked_in_by'),
+    notes: text('notes').notNull().default(''),
+  },
+  t => [
+    index('asset_assignments_hardware_idx').on(t.hardwareId),
+    uniqueIndex('asset_assignments_open_idx').on(t.hardwareId).where(sql`${t.checkedInAt} is null`),
   ],
 );
 
