@@ -56,6 +56,16 @@ export const hardwareLifecycle = z.object({
   note: text(500).optional().default(''),
 });
 
+export const hardwareCheckout = z.object({
+  assignee: text(200).min(1, 'Assignee is required'),
+  dueBack: isoDate.optional().default(''),
+  notes: text(500).optional().default(''),
+});
+
+export const hardwareCheckin = z.object({
+  notes: text(500).optional().default(''),
+});
+
 export const softwareFields = z.object({
   name: text().min(1),
   category: z.enum(SOFTWARE_CATEGORIES),

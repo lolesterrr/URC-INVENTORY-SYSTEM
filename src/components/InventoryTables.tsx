@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, UserRole } from '../types';
+import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
 import type { FormContext } from './inventory/FormModal';
@@ -30,6 +31,8 @@ interface InventoryTablesProps {
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onDeleteHardware: (id: string) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
+  onCheckoutHardware: (id: string, assignee: string, dueBack: string, notes: string) => Promise<void>;
+  onCheckinHardware: (id: string, notes: string) => Promise<void>;
   onAddSoftware: (item: SoftwareLicense) => Promise<void>;
   onUpdateSoftware: (item: SoftwareLicense) => Promise<void>;
   onDeleteSoftware: (id: string) => Promise<void>;
@@ -47,7 +50,9 @@ type Dialog =
   | { kind: 'archive'; target: ArchiveTarget; run: () => Promise<void> }
   | { kind: 'barcode'; id: string }
   | { kind: 'lifecycle'; item: HardwareAsset }
-  | { kind: 'history'; id: string; name: string };
+  | { kind: 'history'; id: string; name: string }
+  | { kind: 'checkout'; item: HardwareAsset }
+  | { kind: 'checkin'; item: HardwareAsset };
 
 function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
   // The BOM makes Excel read the file as UTF-8.
@@ -142,6 +147,10 @@ export default function InventoryTables(props: InventoryTablesProps) {
         );
       case 'history':
         return <HistoryDialog id={dialog.id} name={dialog.name} onClose={close} />;
+      case 'checkout':
+        return <CheckoutDialog asset={dialog.item} onSubmit={(assignee, dueBack, notes) => props.onCheckoutHardware(dialog.item.id, assignee, dueBack, notes)} onClose={close} />;
+      case 'checkin':
+        return <CheckinDialog asset={dialog.item} onSubmit={notes => props.onCheckinHardware(dialog.item.id, notes)} onClose={close} />;
     }
   };
 
@@ -187,6 +196,8 @@ export default function InventoryTables(props: InventoryTablesProps) {
                   canEdit={canEdit}
                   label={assetName(h) || h.id}
                   onBarcode={() => setDialog({ kind: 'barcode', id: h.id })}
+                  onCheckout={canEdit && (h.lifecycleState === 'In Stock' || h.lifecycleState === 'In Repair') ? () => setDialog({ kind: 'checkout', item: h }) : undefined}
+                  onCheckin={canEdit && (h.lifecycleState === 'Deployed' || h.lifecycleState === 'In Repair') ? () => setDialog({ kind: 'checkin', item: h }) : undefined}
                   onLifecycle={canEdit || canDispose ? () => setDialog({ kind: 'lifecycle', item: h }) : undefined}
                   onHistory={canReadHistory ? () => setDialog({ kind: 'history', id: h.id, name: assetName(h) || h.id }) : undefined}
                   editLocked={h.lifecycleState === 'Disposed'}

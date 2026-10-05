@@ -8,12 +8,15 @@ import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, Refresh
 import { LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
 import { HardwareAsset, LifecycleState, UserRole, canEditInventory } from '../types';
 import AssetPassportCard from './AssetPassportCard';
+import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
   currentUserRole: UserRole;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
+  onCheckoutHardware: (id: string, assignee: string, dueBack: string, notes: string) => Promise<void>;
+  onCheckinHardware: (id: string, notes: string) => Promise<void>;
 }
 
 export default function BarcodeScanner({
@@ -21,13 +24,16 @@ export default function BarcodeScanner({
   currentUserRole,
   onUpdateHardware,
   onChangeLifecycle,
+  onCheckoutHardware,
+  onCheckinHardware,
 }: BarcodeScannerProps) {
   const [selectedMockId, setSelectedMockId] = useState('');
   const [scannedItem, setScannedItem] = useState<HardwareAsset | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [scanMessage, setScanMessage] = useState('Position an URC asset barcode label within the lens frame.');
   const [isUpdating, setIsUpdating] = useState(false);
-  
+  const [assignmentDialog, setAssignmentDialog] = useState<'checkout' | 'checkin' | null>(null);
+
   // Field editing state for scanned item
   const [state, setState] = useState<LifecycleState>('In Stock');
   const [assignee, setAssignee] = useState('');
@@ -125,6 +131,21 @@ export default function BarcodeScanner({
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleCheckout = async (assigneeName: string, dueBack: string, notes: string) => {
+    if (!scannedItem) return;
+    await onCheckoutHardware(scannedItem.id, assigneeName, dueBack, notes);
+    setScannedItem({ ...scannedItem, lifecycleState: 'Deployed', assignee: assigneeName, user: assigneeName });
+    setScanMessage(`Checked out ${scannedItem.id} to ${assigneeName}.`);
+  };
+
+  const handleCheckin = async (notes: string) => {
+    if (!scannedItem) return;
+    await onCheckinHardware(scannedItem.id, notes);
+    const nextState = scannedItem.lifecycleState === 'Deployed' ? 'In Stock' : scannedItem.lifecycleState;
+    setScannedItem({ ...scannedItem, lifecycleState: nextState, assignee: 'Unassigned', user: 'Unassigned' });
+    setScanMessage(`Checked in ${scannedItem.id}.`);
   };
 
   return (
@@ -249,10 +270,31 @@ export default function BarcodeScanner({
               
               <AssetPassportCard item={scannedItem} />
 
+              {canEditInventory(currentUserRole) && (scannedItem.lifecycleState === 'In Stock' || scannedItem.lifecycleState === 'In Repair' || scannedItem.lifecycleState === 'Deployed') && (
+                <div className="flex gap-2">
+                  {(scannedItem.lifecycleState === 'In Stock' || scannedItem.lifecycleState === 'In Repair') && (
+                    <button
+                      onClick={() => setAssignmentDialog('checkout')}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors font-mono uppercase"
+                    >
+                      Check out
+                    </button>
+                  )}
+                  {(scannedItem.lifecycleState === 'Deployed' || scannedItem.lifecycleState === 'In Repair') && (
+                    <button
+                      onClick={() => setAssignmentDialog('checkin')}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors font-mono uppercase"
+                    >
+                      Check in
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Quick Update Form */}
               <form onSubmit={handleApplyQuickUpdate} className="space-y-3">
                 <h4 className="text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1 uppercase font-mono">Quick Dispatch Update</h4>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label htmlFor="scanner-state" className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Lifecycle state</label>
@@ -262,7 +304,7 @@ export default function BarcodeScanner({
                       onChange={(e) => setState(e.target.value as LifecycleState)}
                       className="mt-1 w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded focus:outline-none"
                     >
-                      {/* Moves that need a reason (Retired, Disposed) are made from the register. */}
+                      {/* Moves that need a reason (Retired, Disposed) are made from the register; Deployed needs Check out above. */}
                       {[scannedItem.lifecycleState, ...LIFECYCLE_TRANSITIONS[scannedItem.lifecycleState].filter(s => !NOTE_REQUIRED.includes(s))].map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
@@ -270,7 +312,7 @@ export default function BarcodeScanner({
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Deploy / Hand Over To</label>
+                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Assignee (record only)</label>
                     <div className="relative mt-1">
                       <User className="absolute left-2.5 top-2.5 h-3 w-3 text-slate-400" />
                       <input
@@ -299,7 +341,8 @@ export default function BarcodeScanner({
                 </div>
 
                 <div className="bg-yellow-50/50 p-2.5 rounded border border-yellow-100/50 text-[10px] text-slate-500 leading-normal font-medium">
-                  Field technicians can update the assignee, location and state here. To retire or dispose of an asset, use “Change state” in the register, which asks for a reason.
+                  Use Check out / Check in above to deploy or return an asset. Field technicians can correct the assignee and location, and move between In Stock and In Repair, here. To retire
+                  or dispose of an asset, use “Change state” in the register, which asks for a reason.
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -314,6 +357,13 @@ export default function BarcodeScanner({
                 </div>
 
               </form>
+
+              {assignmentDialog === 'checkout' && (
+                <CheckoutDialog asset={scannedItem} onSubmit={handleCheckout} onClose={() => setAssignmentDialog(null)} />
+              )}
+              {assignmentDialog === 'checkin' && (
+                <CheckinDialog asset={scannedItem} onSubmit={handleCheckin} onClose={() => setAssignmentDialog(null)} />
+              )}
 
             </div>
           ) : (

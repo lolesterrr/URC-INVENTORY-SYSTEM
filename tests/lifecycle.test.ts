@@ -48,10 +48,13 @@ describe('hardware lifecycle', () => {
   it('allows valid moves and rejects the rest with the allowed options', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    expect((await move(officer, 'Deployed').expect(200)).body.lifecycleState).toBe('Deployed');
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane' }).expect(201);
+    expect(out.body.lifecycleState).toBe('Deployed');
     await move(officer, 'In Repair').expect(200);
     const same = await move(officer, 'In Repair').expect(409);
-    expect(same.body.error).toMatch(/Allowed: In Stock, Deployed, Retired/);
+    expect(same.body.error).toMatch(/Allowed: In Stock, Retired/);
+    const noDeploy = await move(officer, 'Deployed').expect(409);
+    expect(noDeploy.body.error).toMatch(/Check out an asset to deploy it/);
     await move(officer, 'Disposed').expect(403); // officer lacks assets:dispose, checked before the transition rule
     await move(officer, 'Unknown').expect(400);
   });
@@ -100,17 +103,115 @@ describe('hardware lifecycle', () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
     await officer.post('/api/hardware').send({ id: 'HW-OTHER', assetName: 'Other' }).expect(201);
-    await move(officer, 'Deployed').expect(200);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane' }).expect(201);
     await move(officer, 'Retired', 'Cracked screen').expect(200);
     const auditor = await agentFor('Auditor');
     const history = await auditor.get(`/api/hardware/${ID}/history`).expect(200);
-    expect(history.body.map((e: { action: string }) => e.action)).toEqual(['Create Hardware', 'Lifecycle Change', 'Lifecycle Change']);
+    expect(history.body.map((e: { action: string }) => e.action)).toEqual(['Create Hardware', 'Check Out', 'Lifecycle Change']);
     const last = history.body[2];
     expect(last.user).toBe('it.officer');
     expect(last.before).toEqual({ lifecycleState: 'Deployed' });
     expect(last.after).toEqual({ lifecycleState: 'Retired', note: 'Cracked screen' });
     expect(last.details).toMatch(/Deployed → Retired\. Note: Cracked screen/);
     await auditor.get('/api/hardware/NOPE/history').expect(404);
+  });
+});
+
+describe('check-out / check-in', () => {
+  it('checks an asset out, and rejects a second check-out until it is checked in', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe', dueBack: '2026-12-01', notes: 'For fieldwork' }).expect(201);
+    expect(out.body.lifecycleState).toBe('Deployed');
+    expect(out.body.assignee).toBe('Jane Doe');
+
+    const again = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Someone Else' }).expect(409);
+    expect(again.body.error).toMatch(/Cannot check out an asset that is Deployed/);
+
+    await officer.post(`/api/hardware/${ID}/checkout`).send({}).expect(400);
+
+    const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
+    expect(assignments.body).toHaveLength(1);
+    expect(assignments.body[0]).toMatchObject({ assignee: 'Jane Doe', dueBack: '2026-12-01', open: true, checkedInAt: null });
+  });
+
+  it('checks an asset back in, returning it to In Stock and clearing the assignee', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+
+    const noOpen = await officer.post('/api/hardware/HW-NOPE/checkin').send({}).expect(404);
+    expect(noOpen.body.error).toMatch(/not found/);
+
+    const back = await officer.post(`/api/hardware/${ID}/checkin`).send({ notes: 'Returned in good condition' }).expect(200);
+    expect(back.body.lifecycleState).toBe('In Stock');
+    expect(back.body.assignee).toBe('Unassigned');
+
+    const again = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(409);
+    expect(again.body.error).toMatch(/Cannot check in an asset that is In Stock/);
+
+    const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
+    expect(assignments.body[0]).toMatchObject({ assignee: 'Jane Doe', open: false });
+    expect(assignments.body[0].checkedInBy).toBe('it.officer');
+    expect(assignments.body[0].notes).toMatch(/Returned in good condition/);
+  });
+
+  it('checking in an asset sent for repair keeps it In Repair but releases the assignee', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await move(officer, 'In Repair').expect(200);
+
+    const back = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(200);
+    expect(back.body.lifecycleState).toBe('In Repair');
+    expect(back.body.assignee).toBe('Unassigned');
+  });
+
+  it('cannot check out an asset that is Deployed, Retired or Disposed', async () => {
+    const officer = await agentFor('IT Officer');
+    const manager = await agentFor('Manager');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    const deployed = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    expect(deployed.body.error).toMatch(/Cannot check out an asset that is Deployed/);
+
+    await move(officer, 'Retired', 'Old').expect(200);
+    const retired = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    expect(retired.body.error).toMatch(/Cannot check out an asset that is Retired/);
+
+    await move(manager, 'Disposed', 'BoS 2026/14').expect(200);
+    const disposed = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    expect(disposed.body.error).toMatch(/Cannot check out an asset that is Disposed/);
+  });
+
+  it('a lifecycle move that returns an asset to stock or retires it closes the open check-out', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await move(officer, 'In Repair').expect(200);
+    const back = await move(officer, 'In Stock').expect(200);
+    expect(back.body.assignee).toBe('Unassigned');
+
+    const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
+    expect(assignments.body[0]).toMatchObject({ open: false });
+    expect(assignments.body[0].notes).toMatch(/Closed by a move to In Stock/);
+  });
+
+  it('Auditor and Manager cannot check an asset out or in', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
+    const auditor = await agentFor('Auditor');
+    await auditor.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(403);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    const manager = await agentFor('Manager');
+    await manager.post(`/api/hardware/${ID}/checkin`).send({}).expect(403);
+  });
+
+  it('a new asset created already Deployed opens an assignment too', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop', lifecycleState: 'Deployed', assignee: 'Jane Doe' }).expect(201);
+    const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
+    expect(assignments.body).toMatchObject([{ assignee: 'Jane Doe', open: true }]);
   });
 });
 
@@ -185,6 +286,40 @@ describe('legacy status mapping', () => {
       expect(columns).not.toContain('status');
       const note = sqlite.prepare("SELECT details FROM audit_log WHERE action = 'Migrate Lifecycle'").get() as { details: string };
       expect(note.details).toMatch(/5 records/);
+      sqlite.close();
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('migration 0003 opens an assignment for every asset that is already Deployed', () => {
+    // Build a database at migration 0002 (lifecycle states, no assignments table yet), then apply 0003.
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'urc-mig-'));
+    try {
+      const src = path.join(process.cwd(), 'drizzle');
+      fs.mkdirSync(path.join(tmp, 'meta'));
+      const journal = JSON.parse(fs.readFileSync(path.join(src, 'meta', '_journal.json'), 'utf8'));
+      const old = journal.entries.slice(0, 3);
+      for (const e of old) fs.copyFileSync(path.join(src, `${e.tag}.sql`), path.join(tmp, `${e.tag}.sql`));
+      fs.writeFileSync(path.join(tmp, 'meta', '_journal.json'), JSON.stringify({ ...journal, entries: old }));
+
+      const sqlite = new Database(':memory:');
+      const legacy = drizzle(sqlite);
+      migrate(legacy, { migrationsFolder: tmp });
+      const rows = [
+        ['HW-1', 'Deployed', 'Jane Doe'],
+        ['HW-2', 'Deployed', 'Unassigned'],
+        ['HW-3', 'In Stock', 'Unassigned'],
+        ['HW-4', 'In Repair', 'Bob'],
+      ] as const;
+      const insert = sqlite.prepare('INSERT INTO hardware (id, asset_name, lifecycle_state, assigned_to) VALUES (?, ?, ?, ?)');
+      for (const [id, state, user] of rows) insert.run(id, 'Asset', state, user);
+
+      migrate(legacy, { migrationsFolder: src });
+      const assignments = sqlite.prepare('SELECT hardware_id AS id, assignee, checked_out_by AS by, checked_in_at AS closed FROM asset_assignments ORDER BY hardware_id').all();
+      expect(assignments).toEqual([{ id: 'HW-1', assignee: 'Jane Doe', by: 'system', closed: null }]);
+      const note = sqlite.prepare("SELECT details FROM audit_log WHERE action = 'Migrate Assignments'").get() as { details: string };
+      expect(note.details).toMatch(/1 already-deployed assets/);
       sqlite.close();
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });

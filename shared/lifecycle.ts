@@ -5,11 +5,15 @@
 export const LIFECYCLE_STATES = ['In Stock', 'Deployed', 'In Repair', 'Retired', 'Disposed'] as const;
 export type LifecycleState = (typeof LIFECYCLE_STATES)[number];
 
-/** Allowed moves between lifecycle states. Disposed is final. */
+/**
+ * Allowed moves between lifecycle states. Disposed is final.
+ * Deployed is never a direct move: POST /api/hardware/:id/checkout is the only way in (it records who
+ * has the asset) and /checkin is the only way out of Deployed back to In Stock (it closes that record).
+ */
 export const LIFECYCLE_TRANSITIONS: Record<LifecycleState, readonly LifecycleState[]> = {
-  'In Stock': ['Deployed', 'In Repair', 'Retired'],
-  Deployed: ['In Stock', 'In Repair', 'Retired'],
-  'In Repair': ['In Stock', 'Deployed', 'Retired'],
+  'In Stock': ['In Repair', 'Retired'],
+  Deployed: ['In Repair', 'Retired'],
+  'In Repair': ['In Stock', 'Retired'],
   Retired: ['In Stock', 'Disposed'],
   Disposed: [],
 };

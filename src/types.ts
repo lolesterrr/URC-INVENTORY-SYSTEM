@@ -150,6 +150,20 @@ export interface Alert {
   status: 'unread' | 'resolved';
 }
 
+/** One check-out/check-in cycle for a hardware asset, from GET /api/hardware/:id/assignments. */
+export interface AssetAssignment {
+  id: number;
+  hardwareId: string;
+  assignee: string;
+  checkedOutAt: string;
+  checkedOutBy: string;
+  dueBack: string | null;
+  checkedInAt: string | null;
+  checkedInBy: string | null;
+  notes: string;
+  open: boolean;
+}
+
 export interface AuditLog {
   id: string;
   user: string;
