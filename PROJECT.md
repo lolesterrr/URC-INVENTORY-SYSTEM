@@ -91,6 +91,9 @@ Line-by-line route review and the git-history secret check are still pending (T2
   3. **Departments, staff and locations as real records** (T9c) ✅
   4. Purchase and warranty fields with in-app expiry alerts
   5. Then CSV import/export, QR labels and standard reports, in an order to agree later.
+- [ ] T9c follow-up (2026-10-09, user feedback on PR #3):
+  - **Shared devices:** an asset can be deployed with no individual assignee (a switch in a rack, a shared printer). Check-out takes either a staff member or "shared, no individual assignee". Both open an assignment row, so "Deployed always has exactly one open assignment" still holds and check-in works the same way. Creating an asset as Deployed asks for the same choice. Migration 0004 (not yet released) also opens a row for unassigned Deployed assets, which legacy "In Use" records could produce.
+  - **Duplicates: merge.** `POST /api/{departments|locations|staff}/:id/merge {intoId}` moves every reference from the duplicate to the record kept, then archives the duplicate, all in one transaction with one audit entry. References moved: department → hardware, software and staff; location → hardware and sub-locations; staff → hardware and every assignment row (each row's name snapshot is kept, so history still shows the name used at the time). Refused when the record kept is archived or is the same record, when a location would end up inside itself, or when moved sub-locations would clash by name with existing ones. The add-staff form warns, without blocking, when an active person already has that name. Needs `directory:manage`.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
