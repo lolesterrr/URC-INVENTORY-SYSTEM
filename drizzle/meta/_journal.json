@@ -29,6 +29,13 @@
       "when": 1791190806278,
       "tag": "0003_checkout_checkin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791538270284,
+      "tag": "0004_directory_records",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,13 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import type { z } from 'zod';
 import type { DB } from '../db';
-import { assetAssignments, auditLog, hardware } from '../db/schema';
+import { assetAssignments, auditLog, hardware, staff } from '../db/schema';
 import { can } from '../auth/permissions';
 import { requirePermission } from '../auth/session';
 import { recordAudit } from '../services/audit';
 import { runAlertChecks } from '../services/alerts';
+import { checkReference, loadDirectory, type Directory } from '../services/directory';
 import { canTransition, LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
 import { HARDWARE_CATEGORIES, hardwareCheckin, hardwareCheckout, hardwareCreate, hardwareFields, hardwareLifecycle, parseBody } from '../validation';
 import { auditToApi } from './reports';
@@ -15,10 +16,15 @@ type Row = typeof hardware.$inferSelect;
 type AssignmentRow = typeof assetAssignments.$inferSelect;
 type Category = (typeof HARDWARE_CATEGORIES)[number];
 
-/** API shape expected by the UI (includes legacy `name`/`user`/`assignee` aliases). */
-export function hardwareToApi(r: Row) {
-  const { deletedAt: _deleted, assignedTo, ...rest } = r;
-  return { ...rest, name: r.assetName, user: assignedTo, assignee: assignedTo };
+/** The row plus display names for its department, location (full path) and assignee. Also what the audit log stores. */
+function withNames(r: Row, dir: Directory) {
+  return { ...r, department: dir.department(r.departmentId), location: dir.location(r.locationId), assignee: dir.staff(r.assigneeId) };
+}
+
+/** API shape expected by the UI (includes the legacy `name` alias). */
+export function hardwareToApi(r: Row, dir: Directory) {
+  const { deletedAt: _deleted, ...rest } = withNames(r, dir);
+  return { ...rest, name: r.assetName };
 }
 
 export function assignmentToApi(r: AssignmentRow) {
@@ -38,12 +44,10 @@ export function detectCategory(name: string, model: string): Category {
 
 /** Maps validated input (with UI aliases) to table columns, dropping undefined fields. */
 function toColumns(input: z.infer<typeof hardwareFields>): Partial<Row> {
-  const { name, user, assignee, assetName, ...rest } = input;
+  const { name, assetName, ...rest } = input;
   const out: Partial<Row> = { ...rest };
   const finalName = assetName ?? name;
-  const finalUser = user ?? assignee;
   if (finalName !== undefined) out.assetName = finalName;
-  if (finalUser !== undefined) out.assignedTo = finalUser || 'Unassigned';
   for (const k of Object.keys(out) as (keyof Row)[]) if (out[k] === undefined) delete out[k];
   return out;
 }
@@ -54,23 +58,46 @@ export function hardwareRouter(db: DB) {
     db.select().from(hardware).where(and(eq(hardware.id, id), isNull(hardware.deletedAt))).get();
   const openAssignment = (hardwareId: string) =>
     db.select().from(assetAssignments).where(and(eq(assetAssignments.hardwareId, hardwareId), isNull(assetAssignments.checkedInAt))).get();
+  const toApi = (r: Row) => hardwareToApi(r, loadDirectory(db));
+  const snapshot = (r: Row) => withNames(r, loadDirectory(db));
+  /** Rejects a department or location that does not exist or was archived (keeping the current one is fine). */
+  const badReference = (res: Response, cols: Partial<Row>, current?: Row) => {
+    for (const [field, kind] of [['departmentId', 'department'], ['locationId', 'location']] as const) {
+      const error = checkReference(db, kind, cols[field], current ? current[field] : null);
+      if (error) return res.status(400).json({ error, fields: [{ field, message: error }] });
+    }
+    return null;
+  };
 
   router.get('/', requirePermission('assets:read'), (_req, res) => {
-    res.json(db.select().from(hardware).where(isNull(hardware.deletedAt)).orderBy(asc(hardware.id)).all().map(hardwareToApi));
+    const dir = loadDirectory(db);
+    res.json(db.select().from(hardware).where(isNull(hardware.deletedAt)).orderBy(asc(hardware.id)).all().map(r => hardwareToApi(r, dir)));
   });
 
   router.post('/', requirePermission('assets:write'), (req, res) => {
     const body = parseBody(hardwareCreate, req.body, res);
     if (!body) return;
-    const cols = toColumns(body);
+    const { assigneeId, lifecycleState = 'In Stock', ...fields } = body;
+    const cols = toColumns(fields);
     if (!cols.assetName) return res.status(400).json({ error: 'Asset name is required.' });
+    if (badReference(res, cols)) return;
+    // A Deployed asset always has an open check-out, so one that starts Deployed needs its assignee now.
+    if (lifecycleState === 'Deployed' && !assigneeId) {
+      return res.status(400).json({ error: 'Pick who has an asset that starts Deployed.', fields: [{ field: 'assigneeId', message: 'Required' }] });
+    }
+    if (lifecycleState !== 'Deployed' && assigneeId) {
+      return res.status(400).json({ error: 'Only an asset that starts Deployed has an assignee. Check it out instead.', fields: [{ field: 'assigneeId', message: 'Not allowed' }] });
+    }
+    const assigneeError = checkReference(db, 'staff', assigneeId);
+    if (assigneeError) return res.status(400).json({ error: assigneeError, fields: [{ field: 'assigneeId', message: assigneeError }] });
     if (db.select({ id: hardware.id }).from(hardware).where(eq(hardware.id, body.id)).get()) {
       return res.status(409).json({ error: `An asset with ID ${body.id} already exists (it may be archived).` });
     }
     const values = {
       ...cols,
       id: body.id,
-      lifecycleState: body.lifecycleState ?? 'In Stock',
+      lifecycleState,
+      assigneeId: assigneeId ?? null,
       lifecycleChangedAt: new Date().toISOString(),
       assetName: cols.assetName,
       category: cols.category ?? detectCategory(cols.assetName, cols.model ?? ''),
@@ -78,10 +105,11 @@ export function hardwareRouter(db: DB) {
     };
     db.insert(hardware).values(values).run();
     const created = active(body.id)!;
+    const after = snapshot(created);
     // A new asset may start Deployed (e.g. recording one already in the field); open its assignment too.
-    if (created.lifecycleState === 'Deployed' && created.assignedTo !== 'Unassigned') {
+    if (created.assigneeId !== null) {
       db.insert(assetAssignments)
-        .values({ hardwareId: created.id, assignee: created.assignedTo, checkedOutAt: values.lifecycleChangedAt, checkedOutBy: req.user!.username, notes: 'Set at creation.' })
+        .values({ hardwareId: created.id, staffId: created.assigneeId, assignee: after.assignee, checkedOutAt: values.lifecycleChangedAt, checkedOutBy: req.user!.username, notes: 'Set at creation.' })
         .run();
     }
     recordAudit(db, req, {
@@ -89,10 +117,10 @@ export function hardwareRouter(db: DB) {
       details: `Added hardware asset ${created.assetName} (${created.id}).`,
       entityType: 'hardware',
       entityId: created.id,
-      after: created,
+      after,
     });
     runAlertChecks(db);
-    res.status(201).json(hardwareToApi(created));
+    res.status(201).json(toApi(created));
   });
 
   router.put('/:id', requirePermission('assets:write'), (req, res) => {
@@ -101,8 +129,10 @@ export function hardwareRouter(db: DB) {
     if (existing.lifecycleState === 'Disposed') return res.status(409).json({ error: 'Disposed assets are read-only.' });
     const body = parseBody(hardwareFields, req.body, res);
     if (!body) return;
+    const cols = toColumns(body);
+    if (badReference(res, cols, existing)) return;
     db.update(hardware)
-      .set({ ...toColumns(body), updatedAt: new Date().toISOString() })
+      .set({ ...cols, updatedAt: new Date().toISOString() })
       .where(eq(hardware.id, existing.id))
       .run();
     const updated = active(existing.id)!;
@@ -111,11 +141,11 @@ export function hardwareRouter(db: DB) {
       details: `Updated hardware asset ${updated.assetName} (${updated.id}). State: ${updated.lifecycleState}.`,
       entityType: 'hardware',
       entityId: updated.id,
-      before: existing,
-      after: updated,
+      before: snapshot(existing),
+      after: snapshot(updated),
     });
     runAlertChecks(db);
-    res.json(hardwareToApi(updated));
+    res.json(toApi(updated));
   });
 
   // The only way to change a lifecycle state after creation, so every move is checked and audited.
@@ -149,7 +179,7 @@ export function hardwareRouter(db: DB) {
         .run();
     }
     db.update(hardware)
-      .set({ lifecycleState: to, lifecycleChangedAt: now, updatedAt: now, ...(assignment ? { assignedTo: 'Unassigned' } : {}) })
+      .set({ lifecycleState: to, lifecycleChangedAt: now, updatedAt: now, ...(releasesAssignee ? { assigneeId: null } : {}) })
       .where(eq(hardware.id, existing.id))
       .run();
     const updated = active(existing.id)!;
@@ -161,7 +191,7 @@ export function hardwareRouter(db: DB) {
       before: { lifecycleState: from },
       after: { lifecycleState: to, note },
     });
-    res.json(hardwareToApi(updated));
+    res.json(toApi(updated));
   });
 
   // The only way into Deployed: records who the asset is with and closes once it is checked in.
@@ -176,22 +206,26 @@ export function hardwareRouter(db: DB) {
     if (openAssignment(existing.id)) {
       return res.status(409).json({ error: 'This asset already has an open check-out. Check it in first.' });
     }
+    const staffError = checkReference(db, 'staff', body.staffId);
+    if (staffError) return res.status(400).json({ error: staffError, fields: [{ field: 'staffId', message: staffError }] });
+    const person = db.select().from(staff).where(eq(staff.id, body.staffId)).get()!;
+    const dir = loadDirectory(db);
     const now = new Date().toISOString();
     db.insert(assetAssignments)
-      .values({ hardwareId: existing.id, assignee: body.assignee, checkedOutAt: now, checkedOutBy: req.user!.username, dueBack: body.dueBack || null, notes: body.notes })
+      .values({ hardwareId: existing.id, staffId: person.id, assignee: person.fullName, checkedOutAt: now, checkedOutBy: req.user!.username, dueBack: body.dueBack || null, notes: body.notes })
       .run();
-    db.update(hardware).set({ lifecycleState: 'Deployed', lifecycleChangedAt: now, assignedTo: body.assignee, updatedAt: now }).where(eq(hardware.id, existing.id)).run();
+    db.update(hardware).set({ lifecycleState: 'Deployed', lifecycleChangedAt: now, assigneeId: person.id, updatedAt: now }).where(eq(hardware.id, existing.id)).run();
     const updated = active(existing.id)!;
     recordAudit(db, req, {
       action: 'Check Out',
-      details: `${updated.assetName} (${updated.id}): checked out to ${body.assignee}.${body.dueBack ? ` Due back ${body.dueBack}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
+      details: `${updated.assetName} (${updated.id}): checked out to ${person.fullName}.${body.dueBack ? ` Due back ${body.dueBack}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
       entityType: 'hardware',
       entityId: updated.id,
-      before: { lifecycleState: existing.lifecycleState, assignedTo: existing.assignedTo },
-      after: { lifecycleState: 'Deployed', assignedTo: body.assignee },
+      before: { lifecycleState: existing.lifecycleState, assignee: dir.staff(existing.assigneeId) },
+      after: { lifecycleState: 'Deployed', assignee: person.fullName },
     });
     runAlertChecks(db);
-    res.status(201).json(hardwareToApi(updated));
+    res.status(201).json(hardwareToApi(updated, dir));
   });
 
   // Closes the open check-out. A Deployed asset returns to In Stock; one In Repair stays In Repair.
@@ -215,7 +249,7 @@ export function hardwareRouter(db: DB) {
       .set({
         lifecycleState: toState,
         lifecycleChangedAt: toState !== existing.lifecycleState ? now : existing.lifecycleChangedAt,
-        assignedTo: 'Unassigned',
+        assigneeId: null,
         updatedAt: now,
       })
       .where(eq(hardware.id, existing.id))
@@ -226,11 +260,11 @@ export function hardwareRouter(db: DB) {
       details: `${updated.assetName} (${updated.id}): checked in from ${assignment.assignee}.${toState === existing.lifecycleState ? ` State stays ${toState}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
       entityType: 'hardware',
       entityId: updated.id,
-      before: { lifecycleState: existing.lifecycleState, assignedTo: existing.assignedTo },
-      after: { lifecycleState: updated.lifecycleState, assignedTo: updated.assignedTo },
+      before: { lifecycleState: existing.lifecycleState, assignee: assignment.assignee },
+      after: { lifecycleState: updated.lifecycleState, assignee: '' },
     });
     runAlertChecks(db);
-    res.json(hardwareToApi(updated));
+    res.json(toApi(updated));
   });
 
   // Every check-out/check-in for this asset, newest first (open one included).
@@ -268,7 +302,7 @@ export function hardwareRouter(db: DB) {
       details: `Archived hardware asset ${existing.assetName} (${existing.id}).`,
       entityType: 'hardware',
       entityId: existing.id,
-      before: existing,
+      before: snapshot(existing),
     });
     res.json({ success: true, deletedId: existing.id });
   });

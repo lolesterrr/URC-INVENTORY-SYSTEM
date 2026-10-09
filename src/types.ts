@@ -19,6 +19,7 @@ export type Permission =
   | 'assets:write'
   | 'assets:delete'
   | 'assets:dispose'
+  | 'directory:manage'
   | 'alerts:manage'
   | 'audit:read'
   | 'users:manage'

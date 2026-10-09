@@ -9,15 +9,19 @@ import { eq as eqId } from 'drizzle-orm';
 import { z } from 'zod';
 import { loadConfig } from '../server/config';
 import { openDatabase, type DB } from '../server/db';
-import { hardware, LIFECYCLE_STATES, serverComponents, software } from '../server/db/schema';
+import { assetAssignments, hardware, LIFECYCLE_STATES, serverComponents, software } from '../server/db/schema';
 import { detectCategory } from '../server/routes/hardware';
 import { recordAudit } from '../server/services/audit';
 import { runAlertChecks } from '../server/services/alerts';
 import { legacyStatusToLifecycle } from '../server/services/lifecycle';
+import { findOrCreateDepartment, findOrCreateLocation, findOrCreateStaff } from '../server/services/directory';
 import { componentCreate, hardwareCreate, HARDWARE_CATEGORIES, softwareCreate } from '../server/validation';
 
-// Imported records may already be Disposed, which the create form does not allow.
-const hardwareImport = hardwareCreate.extend({ lifecycleState: z.enum(LIFECYCLE_STATES) });
+// Imported records may already be Disposed, which the create form does not allow. The legacy file names its
+// department, location and assignee as text; they are matched to (or create) directory records by name.
+const legacyText = z.string().trim().max(200).optional();
+const hardwareImport = hardwareCreate.extend({ lifecycleState: z.enum(LIFECYCLE_STATES), department: legacyText, location: legacyText, user: legacyText, assignee: legacyText });
+const softwareImport = softwareCreate.extend({ department: legacyText });
 
 type Result = { imported: number; skipped: number; invalid: string[] };
 
@@ -75,17 +79,28 @@ export function importLegacy(db: DB, data: Record<string, unknown>) {
 
   return db.transaction(tx => {
     const hw = importRows('hardware', legacyHardware, hardwareImport, id => Boolean(tx.select({ id: hardware.id }).from(hardware).where(eqId(hardware.id, id)).get()), r => {
-      const assetName = r.assetName || r.name || 'Unnamed asset';
+      const { name, user, assignee, department, location, assigneeId: _ignored, ...fields } = r;
+      const assetName = fields.assetName || name || 'Unnamed asset';
+      const departmentId = findOrCreateDepartment(tx, department);
+      const assigneeId = findOrCreateStaff(tx, user || assignee, departmentId);
+      const now = new Date().toISOString();
       tx.insert(hardware).values({
-        ...r,
-        name: undefined, user: undefined, assignee: undefined,
+        ...fields,
         assetName,
-        assignedTo: r.user || r.assignee || 'Unassigned',
-        category: r.category ?? detectCategory(assetName, r.model ?? ''),
-      } as typeof hardware.$inferInsert).run();
+        departmentId,
+        locationId: findOrCreateLocation(tx, location),
+        assigneeId,
+        lifecycleChangedAt: now,
+        category: fields.category ?? detectCategory(assetName, fields.model ?? ''),
+      }).run();
+      // Same rule as the app: an assigned asset in service has an open check-out.
+      if (assigneeId !== null && (r.lifecycleState === 'Deployed' || r.lifecycleState === 'In Repair')) {
+        tx.insert(assetAssignments).values({ hardwareId: r.id, staffId: assigneeId, assignee: (user || assignee)!, checkedOutAt: now, checkedOutBy: 'system', notes: 'Imported from the legacy file.' }).run();
+      }
     });
-    const sw = importRows('software', arr(data.software), softwareCreate, id => Boolean(tx.select({ id: software.id }).from(software).where(eqId(software.id, id)).get()), r => {
-      tx.insert(software).values(r).run();
+    const sw = importRows('software', arr(data.software), softwareImport, id => Boolean(tx.select({ id: software.id }).from(software).where(eqId(software.id, id)).get()), r => {
+      const { department, ...fields } = r;
+      tx.insert(software).values({ ...fields, departmentId: findOrCreateDepartment(tx, department) }).run();
     });
     const sc = importRows('server component', arr(data.serverComponents), componentCreate, id => Boolean(tx.select({ id: serverComponents.id }).from(serverComponents).where(eqId(serverComponents.id, id)).get()), r => {
       tx.insert(serverComponents).values(r).run();

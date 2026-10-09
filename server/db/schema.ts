@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, real, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text, index, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { LIFECYCLE_STATES, type LifecycleState } from '../../shared/lifecycle';
 
 const timestamps = {
@@ -39,6 +39,43 @@ export const sessions = sqliteTable(
   t => [index('sessions_user_idx').on(t.userId)],
 );
 
+// Directory records referenced by assets. Soft-deleted (shown as "archived"); names are unique case-insensitively,
+// checked by the server (server/routes/directory.ts).
+export const departments = sqliteTable('departments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  deletedAt: text('deleted_at'),
+  ...timestamps,
+});
+
+/** Any depth (e.g. Region → Station → Office) through `parent_id`. */
+export const locations = sqliteTable(
+  'locations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    parentId: integer('parent_id').references((): AnySQLiteColumn => locations.id),
+    deletedAt: text('deleted_at'),
+    ...timestamps,
+  },
+  t => [index('locations_parent_idx').on(t.parentId)],
+);
+
+/** People who hold equipment. Not system users: most staff never sign in. */
+export const staff = sqliteTable(
+  'staff',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    fullName: text('full_name').notNull(),
+    /** Optional employee number; unique when given. */
+    staffNumber: text('staff_number').notNull().default(''),
+    departmentId: integer('department_id').references(() => departments.id),
+    deletedAt: text('deleted_at'),
+    ...timestamps,
+  },
+  t => [index('staff_department_idx').on(t.departmentId)],
+);
+
 // Hardware lifecycle states and allowed moves: shared/lifecycle.ts. Changes go through POST /api/hardware/:id/lifecycle.
 export { LIFECYCLE_STATES, type LifecycleState };
 
@@ -58,9 +95,10 @@ export const hardware = sqliteTable(
     lifecycleChangedAt: text('lifecycle_changed_at'),
     /** Free-text condition note, e.g. "Faulty" or "Upgrade to 1TB". */
     condition: text('condition').notNull().default(''),
-    department: text('department').notNull().default(''),
-    location: text('location').notNull().default(''),
-    assignedTo: text('assigned_to').notNull().default('Unassigned'),
+    departmentId: integer('department_id').references(() => departments.id),
+    locationId: integer('location_id').references(() => locations.id),
+    /** Set only by check-out/check-in (or creating an asset already Deployed). */
+    assigneeId: integer('assignee_id').references(() => staff.id),
     yearOfPurchase: text('year_of_purchase').notNull().default(''),
     dateAcquired: text('date_acquired').notNull().default(''),
     cost: real('cost').notNull().default(0),
@@ -78,7 +116,9 @@ export const hardware = sqliteTable(
   },
   t => [
     index('hardware_serial_idx').on(t.serialNumber),
-    index('hardware_department_idx').on(t.department),
+    index('hardware_department_idx').on(t.departmentId),
+    index('hardware_location_idx').on(t.locationId),
+    index('hardware_assignee_idx').on(t.assigneeId),
     index('hardware_lifecycle_idx').on(t.lifecycleState),
   ],
 );
@@ -90,6 +130,8 @@ export const assetAssignments = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     hardwareId: text('hardware_id').notNull().references(() => hardware.id),
+    staffId: integer('staff_id').references(() => staff.id),
+    /** The staff member's name at check-out time, so history reads the same after a rename. */
     assignee: text('assignee').notNull(),
     checkedOutAt: text('checked_out_at').notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
     checkedOutBy: text('checked_out_by').notNull(),
@@ -108,7 +150,7 @@ export const software = sqliteTable('software', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   category: text('category').notNull(),
-  department: text('department').notNull().default(''),
+  departmentId: integer('department_id').references(() => departments.id),
   licenseKey: text('license_key').notNull().default(''),
   seatCapacity: integer('seat_capacity').notNull().default(0),
   activeSeats: integer('active_seats').notNull().default(0),
