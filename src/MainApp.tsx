@@ -12,6 +12,7 @@ import DashboardView from './components/DashboardView';
 import InventoryTables from './components/InventoryTables';
 import type { InventoryTab } from './components/inventory/model';
 import BarcodeScanner from './components/BarcodeScanner';
+import DirectoryView from './components/directory/DirectoryView';
 import NotificationCenter from './components/NotificationCenter';
 import HelpGuide from './components/HelpGuide';
 import UserManagement from './components/UserManagement';
@@ -69,6 +70,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
   };
   const runAlertChecks = reportErrors(actions.runAlertChecks);
   const resolveAlert = (id: string) => reportErrors(() => actions.resolveAlert(id))();
+  const addStaff = (fullName: string) => actions.saveStaff({ fullName, staffNumber: '', departmentId: null });
 
   const can = (permission: 'users:manage' | 'backups:manage') => currentUser.permissions.includes(permission);
   const noAccess = <div>You do not have access to this page.</div>;
@@ -102,6 +104,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             hardware={data.hardware}
             software={data.software}
             serverComponents={data.serverComponents}
+            directory={data.directory}
             currentUserRole={currentUser.role}
             permissions={currentUser.permissions}
             username={currentUser.username}
@@ -111,6 +114,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             onChangeLifecycle={actions.changeLifecycle}
             onCheckoutHardware={actions.checkoutHardware}
             onCheckinHardware={actions.checkinHardware}
+            onAddStaff={addStaff}
             onAddSoftware={actions.addSoftware}
             onUpdateSoftware={actions.updateSoftware}
             onDeleteSoftware={actions.deleteSoftware}
@@ -121,15 +125,28 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             setSelectedSubTab={setInventoryTab}
           />
         );
+      case 'directory':
+        return (
+          <DirectoryView
+            directory={data.directory}
+            canManage={currentUser.permissions.includes('directory:manage')}
+            savers={actions}
+            onArchive={actions.archiveRecord}
+            onRestore={actions.restoreRecord}
+            onMerge={actions.mergeRecord}
+          />
+        );
       case 'barcode':
         return (
           <BarcodeScanner
             hardware={data.hardware}
+            directory={data.directory}
             currentUserRole={currentUser.role}
             onUpdateHardware={actions.updateHardware}
             onChangeLifecycle={actions.changeLifecycle}
             onCheckoutHardware={actions.checkoutHardware}
             onCheckinHardware={actions.checkinHardware}
+            onAddStaff={currentUser.permissions.includes('directory:manage') ? addStaff : undefined}
           />
         );
       case 'notifications':

@@ -11,6 +11,7 @@ import { serverComponentsRouter } from './routes/serverComponents';
 import { alertsRouter } from './routes/alerts';
 import { analyticsRouter, auditLogsRouter } from './routes/reports';
 import { backupsRouter } from './routes/backups';
+import { departmentsRouter, locationsRouter, staffRouter } from './routes/directory';
 import type { BackupService } from './services/backup';
 
 export interface AppOptions extends SessionOptions {
@@ -59,6 +60,9 @@ export function createApp(db: DB, opts: AppOptions) {
   api.use('/hardware', hardwareRouter(db));
   api.use('/software', softwareRouter(db));
   api.use('/server-components', serverComponentsRouter(db));
+  api.use('/departments', departmentsRouter(db));
+  api.use('/locations', locationsRouter(db));
+  api.use('/staff', staffRouter(db));
   api.use('/alerts', alertsRouter(db));
   api.use('/audit-logs', auditLogsRouter(db));
   api.use('/analytics', analyticsRouter(db));

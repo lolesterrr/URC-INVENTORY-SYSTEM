@@ -1,7 +1,6 @@
 /** Small building blocks shared by the inventory registers, forms and dialogs. */
 import React, { type ReactNode } from 'react';
 import { Edit2, History, LogIn, LogOut, Tag, Trash2, Workflow, X } from 'lucide-react';
-import { URC_DEPARTMENTS } from '../../types';
 
 export interface Column<T> {
   header: string;
@@ -11,7 +10,7 @@ export interface Column<T> {
   className?: string;
 }
 
-export function DataTable<T extends { id: string }>({
+export function DataTable<T extends { id: string | number }>({
   columns,
   rows,
   actions,
@@ -207,16 +206,37 @@ export function SelectField<V extends string>({ label, value, options, onChange 
   );
 }
 
-export function DepartmentField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export interface RecordOption {
+  id: number;
+  label: string;
+  archived: boolean;
+}
+
+/**
+ * Picks a directory record (department, location). Archived records are not offered, except the one
+ * already selected, so editing an old asset never silently drops it.
+ */
+export function RecordSelect({
+  label,
+  value,
+  options,
+  onChange,
+  wide,
+}: {
+  label: string;
+  value: number | null;
+  options: RecordOption[];
+  onChange: (value: number | null) => void;
+  wide?: boolean;
+}) {
   const id = React.useId();
-  const options: string[] = [...URC_DEPARTMENTS];
-  // Keep a legacy department visible even if it is not in the standard list.
-  if (value && !options.includes(value)) options.unshift(value);
+  const shown = options.filter(o => !o.archived || o.id === value);
   return (
-    <div className="sm:col-span-2 bg-amber-50/70 p-2.5 rounded-lg border border-amber-200">
-      <label htmlFor={id} className="block text-[10px] font-bold text-amber-900 uppercase font-mono mb-1">Department</label>
-      <select id={id} value={value} onChange={e => onChange(e.target.value)} className="w-full p-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
-        {options.map(d => <option key={d} value={d}>{d}</option>)}
+    <div className={wide ? 'sm:col-span-2' : undefined}>
+      <label htmlFor={id} className={labelBase}>{label}</label>
+      <select id={id} value={value ?? ''} onChange={e => onChange(e.target.value ? Number(e.target.value) : null)} className={`${inputBase} font-bold`}>
+        <option value="">—</option>
+        {shown.map(o => <option key={o.id} value={o.id}>{o.label}{o.archived ? ' (archived)' : ''}</option>)}
       </select>
     </div>
   );

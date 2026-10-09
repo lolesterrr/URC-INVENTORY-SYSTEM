@@ -1,5 +1,4 @@
 import { Download, Plus, Printer, Search } from 'lucide-react';
-import { URC_DEPARTMENTS } from '../../types';
 import { COMPONENT_CATEGORIES, HARDWARE_CATEGORIES, SOFTWARE_CATEGORIES, STATUSES, type Filters, type InventoryTab } from './model';
 
 const TABS: { id: InventoryTab; label: string }[] = [
@@ -27,7 +26,10 @@ export default function InventoryToolbar({
   canEdit,
   onExport,
   onAdd,
+  departments,
 }: {
+  /** Department names to filter by (archived ones too: old assets still show them). */
+  departments: string[];
   tab: InventoryTab;
   onTabChange: (tab: InventoryTab) => void;
   filters: Filters;
@@ -94,7 +96,7 @@ export default function InventoryToolbar({
           {tab !== 'servers' && (
             <select aria-label="Department" value={filters.department} onChange={e => set({ department: e.target.value })} className={selectClass}>
               <option value="All">All departments</option>
-              {URC_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
           <select aria-label={tab === 'hardware' ? 'Lifecycle state' : 'Status'} value={filters.status} onChange={e => set({ status: e.target.value })} className={selectClass}>

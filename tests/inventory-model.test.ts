@@ -5,7 +5,7 @@ import { hardwareColumns } from '../src/components/inventory/columns';
 import { changedFields } from '../src/components/inventory/HistoryDialog';
 
 const asset = (id: string, extra: Partial<HardwareAsset> = {}): HardwareAsset => ({
-  id, user: '', assetName: `Asset ${id}`, yearOfPurchase: '', location: '', model: '', serialNumber: '', engravedNumber: '',
+  id, assetName: `Asset ${id}`, yearOfPurchase: '', departmentId: null, department: '', locationId: null, location: '', assigneeId: null, assignee: '', model: '', serialNumber: '', engravedNumber: '',
   operatingSystem: '', ram: '', hardDisk: '', lifecycleState: 'Deployed', condition: '', category: 'Laptop', ...extra,
 });
 

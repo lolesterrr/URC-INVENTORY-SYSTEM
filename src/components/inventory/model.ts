@@ -30,9 +30,9 @@ export const inGroup = (h: HardwareAsset, group: HardwareGroup) => {
   return !categories || (h.category !== undefined && categories.includes(h.category));
 };
 
-// The API returns both the current names and legacy aliases; prefer the current ones.
+// The API returns both the current name and a legacy alias; prefer the current one.
 export const assetName = (h: HardwareAsset) => h.assetName || h.name || '';
-export const assignee = (h: HardwareAsset) => h.user || h.assignee || '';
+export const assignee = (h: HardwareAsset) => h.assignee;
 
 export interface Filters {
   search: string;
