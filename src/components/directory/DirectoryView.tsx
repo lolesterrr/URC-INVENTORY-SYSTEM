@@ -3,9 +3,10 @@
  * IT Officer (directory:manage) can add, edit, archive and restore. The server enforces the same rules.
  */
 import { useState } from 'react';
-import { ArchiveRestore, Building2, Edit2, MapPin, Plus, Search, Trash2, UserRound } from 'lucide-react';
+import { ArchiveRestore, Building2, Edit2, GitMerge, MapPin, Plus, Search, Trash2, UserRound } from 'lucide-react';
 import type { Department, Directory, DirectoryKind, LocationRecord, StaffMember } from '../../types';
 import { Badge, DataTable, ErrorNote, type Column } from '../inventory/ui';
+import { MergeDialog } from './MergeDialog';
 import { RecordDialog, type DirectoryRecord, type DirectorySavers } from './RecordDialog';
 
 const TABS: { id: DirectoryKind; label: string; icon: typeof Building2; noun: string }[] = [
@@ -58,17 +59,20 @@ export default function DirectoryView({
   savers,
   onArchive,
   onRestore,
+  onMerge,
 }: {
   directory: Directory;
   canManage: boolean;
   savers: DirectorySavers;
   onArchive: (kind: DirectoryKind, id: number) => Promise<void>;
   onRestore: (kind: DirectoryKind, id: number) => Promise<void>;
+  onMerge: (kind: DirectoryKind, id: number, intoId: number) => Promise<void>;
 }) {
   const [tab, setTab] = useState<DirectoryKind>('departments');
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<{ record: DirectoryRecord | null } | null>(null);
+  const [merging, setMerging] = useState<DirectoryRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const meta = TABS.find(t => t.id === tab)!;
 
@@ -91,6 +95,9 @@ export default function DirectoryView({
       <>
         <button onClick={() => setEditing({ record: r })} title="Edit" aria-label={`Edit ${label}`} className="p-1 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded transition-colors">
           <Edit2 className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => setMerging(r)} title="Merge into another (duplicate)" aria-label={`Merge ${label}`} className="p-1 hover:bg-amber-50 text-amber-700 rounded transition-colors">
+          <GitMerge className="h-3.5 w-3.5" />
         </button>
         {r.archived ? (
           <button onClick={() => run(() => onRestore(tab, r.id))} title="Restore" aria-label={`Restore ${label}`} className="p-1 hover:bg-green-50 text-green-700 rounded transition-colors">
@@ -158,7 +165,7 @@ export default function DirectoryView({
         <p className="text-[10px] text-slate-500">
           {tab === 'locations' && 'Nest locations to any depth, e.g. Region → Station → Office. '}
           {tab === 'staff' && 'Staff are the people who hold equipment; they do not need a sign-in account. '}
-          Archived records stay on old assets and in the history, but are no longer offered for new entries.
+          Archived records stay on old assets and in the history, but are no longer offered for new entries. Use Merge for duplicates.
         </p>
         <ErrorNote message={error} />
       </div>
@@ -169,6 +176,9 @@ export default function DirectoryView({
         {tab === 'staff' && <DataTable columns={STAFF_COLUMNS} rows={visible(directory.staff)} actions={actions} emptyText="No staff match." />}
       </div>
 
+      {merging && (
+        <MergeDialog kind={tab} record={merging} directory={directory} onMerge={intoId => onMerge(tab, merging.id, intoId)} onClose={() => setMerging(null)} />
+      )}
       {editing && <RecordDialog kind={tab} record={editing.record} directory={directory} savers={savers} onClose={() => setEditing(null)} />}
     </div>
   );

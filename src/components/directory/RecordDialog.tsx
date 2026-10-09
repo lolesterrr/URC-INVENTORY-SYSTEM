@@ -19,22 +19,25 @@ const TITLES: Record<DirectoryKind, { noun: string; icon: typeof Building2 }> = 
   staff: { noun: 'staff member', icon: UserRound },
 };
 
-/** A location cannot sit inside itself or its own sub-locations, so those are not offered as a parent. */
-function parentOptions(dir: Directory, editing: LocationRecord | null): RecordOption[] {
-  const excluded = new Set<number>();
-  if (editing) {
-    excluded.add(editing.id);
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const l of dir.locations) {
-        if (l.parentId !== null && excluded.has(l.parentId) && !excluded.has(l.id)) {
-          excluded.add(l.id);
-          grew = true;
-        }
+/** A location and all of its sub-locations, at any depth. */
+export function subtree(locations: LocationRecord[], id: number): Set<number> {
+  const ids = new Set([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const l of locations) {
+      if (l.parentId !== null && ids.has(l.parentId) && !ids.has(l.id)) {
+        ids.add(l.id);
+        grew = true;
       }
     }
   }
+  return ids;
+}
+
+/** A location cannot sit inside itself or its own sub-locations, so those are not offered as a parent. */
+function parentOptions(dir: Directory, editing: LocationRecord | null): RecordOption[] {
+  const excluded = editing ? subtree(dir.locations, editing.id) : new Set<number>();
   return dir.locations.filter(l => !excluded.has(l.id)).map(l => ({ id: l.id, label: l.path, archived: l.archived }));
 }
 
@@ -61,6 +64,10 @@ export function RecordDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { noun, icon: Icon } = TITLES[kind];
+  // Two people can share a name, so this only warns; a real duplicate can be merged later.
+  const namesake = kind === 'staff' && name.trim()
+    ? directory.staff.find(s => !s.archived && s.id !== record?.id && s.fullName.toLowerCase() === name.trim().toLowerCase())
+    : undefined;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +97,13 @@ export function RecordDialog({
         )}
         {kind === 'staff' && (
           <>
+            {namesake && (
+              <p role="status" className="p-2 text-[11px] rounded-md border bg-amber-50 border-amber-200 text-amber-800">
+                {namesake.fullName}
+                {namesake.department && ` (${namesake.department})`}
+                {namesake.staffNumber && `, ${namesake.staffNumber},`} is already a staff member. Save only if this is a different person; a duplicate can be merged later.
+              </p>
+            )}
             <Field label="Staff number" mono value={staffNumber} onChange={setStaffNumber} placeholder="Optional" />
             <RecordSelect label="Department" value={departmentId} options={departmentOptions(directory)} onChange={setDepartmentId} />
           </>

@@ -18,7 +18,7 @@ interface BarcodeScannerProps {
   currentUserRole: UserRole;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
-  onCheckoutHardware: (id: string, staffId: number, dueBack: string, notes: string) => Promise<void>;
+  onCheckoutHardware: (id: string, staffId: number | null, dueBack: string, notes: string) => Promise<void>;
   onCheckinHardware: (id: string, notes: string) => Promise<void>;
   /** Given when the user may add staff records (directory:manage). */
   onAddStaff?: (fullName: string) => Promise<StaffMember>;
@@ -133,10 +133,11 @@ export default function BarcodeScanner({
     }
   };
 
-  const handleCheckout = async (staffId: number, dueBack: string, notes: string) => {
+  const handleCheckout = async (staffId: number | null, dueBack: string, notes: string) => {
     if (!scannedItem) return;
     await onCheckoutHardware(scannedItem.id, staffId, dueBack, notes);
-    setScanMessage(`Checked out ${scannedItem.id} to ${directory.staff.find(s => s.id === staffId)?.fullName ?? 'the selected staff member'}.`);
+    const who = staffId === null ? null : directory.staff.find(s => s.id === staffId)?.fullName;
+    setScanMessage(staffId === null ? `Deployed ${scannedItem.id} as a shared device.` : `Checked out ${scannedItem.id} to ${who ?? 'the selected staff member'}.`);
   };
 
   const handleCheckin = async (notes: string) => {

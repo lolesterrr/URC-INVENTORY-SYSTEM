@@ -4,6 +4,19 @@ import type { StaffMember } from '../../types';
 
 const MAX_MATCHES = 8;
 
+/** "Shared device, no individual assignee": a switch in a rack, a shared printer. */
+export function SharedDeviceToggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex items-start gap-2 text-xs text-slate-700 font-semibold">
+      <input type="checkbox" className="mt-0.5" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <span>
+        Shared device, no individual assignee
+        <span className="block text-[10px] font-normal text-slate-500">For example a network switch or a printer used by an office.</span>
+      </span>
+    </label>
+  );
+}
+
 /**
  * Searchable pick-one list of active staff. When `onAddStaff` is given and nobody matches the typed
  * name exactly, it offers to add that person as a new staff record and selects them.

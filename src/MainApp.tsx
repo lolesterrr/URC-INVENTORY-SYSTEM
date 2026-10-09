@@ -133,6 +133,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             savers={actions}
             onArchive={actions.archiveRecord}
             onRestore={actions.restoreRecord}
+            onMerge={actions.mergeRecord}
           />
         );
       case 'barcode':

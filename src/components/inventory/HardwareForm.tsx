@@ -4,7 +4,7 @@ import type { Directory, HardwareAsset, LifecycleState, StaffMember } from '../.
 import { departmentOptions, locationOptions } from './directoryOptions';
 import { FormModal, useDraft, type FormContext } from './FormModal';
 import { assetName, HARDWARE_CATEGORIES, type HardwareCategory } from './model';
-import { StaffPicker } from './StaffPicker';
+import { SharedDeviceToggle, StaffPicker } from './StaffPicker';
 import { Field, RecordSelect, SelectField } from './ui';
 
 const blank = {
@@ -100,10 +100,11 @@ export default function HardwareForm({
   const [locationId, setLocationId] = useState(initial?.locationId ?? null);
   // Only a new asset that starts Deployed takes an assignee here; otherwise use check-out.
   const [assigneeId, setAssigneeId] = useState<number | null>(null);
+  const [shared, setShared] = useState(false);
   const startsDeployed = ctx.mode === 'add' && draft.lifecycleState === 'Deployed';
 
   const submit = async () => {
-    if (startsDeployed && assigneeId === null) throw new Error('Pick who has this asset, or start it In Stock and check it out.');
+    if (startsDeployed && !shared && assigneeId === null) throw new Error('Pick who has this asset, or mark it as a shared device.');
     const values = Object.fromEntries(Object.entries(draft).map(([k, v]) => [k, v.trim()])) as Draft;
     return onSave({
       ...initial,
@@ -113,7 +114,7 @@ export default function HardwareForm({
       locationId,
       location: initial?.location ?? '',
       // The server ignores the assignee on edits; on create it opens the first check-out.
-      assigneeId: startsDeployed ? assigneeId : initial?.assigneeId ?? null,
+      assigneeId: startsDeployed && !shared ? assigneeId : initial?.assigneeId ?? null,
       assignee: initial?.assignee ?? '',
       category: values.category as HardwareCategory,
       lifecycleState: values.lifecycleState as LifecycleState,
@@ -142,8 +143,9 @@ export default function HardwareForm({
           </p>
         )}
         {startsDeployed && (
-          <div className="sm:col-span-2">
-            <StaffPicker label="Assignee (starts Deployed)" staff={directory.staff} value={assigneeId} onChange={setAssigneeId} onAddStaff={onAddStaff} />
+          <div className="sm:col-span-2 space-y-2">
+            {!shared && <StaffPicker label="Assignee (starts Deployed)" staff={directory.staff} value={assigneeId} onChange={setAssigneeId} onAddStaff={onAddStaff} />}
+            <SharedDeviceToggle checked={shared} onChange={setShared} />
           </div>
         )}
       </div>

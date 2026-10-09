@@ -82,7 +82,7 @@ export function useInventoryData() {
     deleteHardware: (id: string) => change(`/api/hardware/${encodeURIComponent(id)}`, 'DELETE'),
     changeLifecycle: (id: string, to: LifecycleState, note: string) =>
       change(`/api/hardware/${encodeURIComponent(id)}/lifecycle`, 'POST', { to, note }),
-    checkoutHardware: (id: string, staffId: number, dueBack: string, notes: string) =>
+    checkoutHardware: (id: string, staffId: number | null, dueBack: string, notes: string) =>
       change(`/api/hardware/${encodeURIComponent(id)}/checkout`, 'POST', { staffId, dueBack, notes }),
     checkinHardware: (id: string, notes: string) =>
       change(`/api/hardware/${encodeURIComponent(id)}/checkin`, 'POST', { notes }),
@@ -99,6 +99,7 @@ export function useInventoryData() {
     saveStaff: (input: StaffInput, id?: number) => saveRecord<StaffMember>('staff', input, id),
     archiveRecord: (kind: DirectoryKind, id: number) => change(`/api/${kind}/${id}`, 'DELETE'),
     restoreRecord: (kind: DirectoryKind, id: number) => change(`/api/${kind}/${id}/restore`, 'POST'),
+    mergeRecord: (kind: DirectoryKind, id: number, intoId: number) => change(`/api/${kind}/${id}/merge`, 'POST', { intoId }),
   };
 
   return { ...data, isLoading, loadError, lastLoadedAt, refresh, actions };

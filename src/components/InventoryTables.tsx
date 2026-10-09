@@ -32,7 +32,7 @@ interface InventoryTablesProps {
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onDeleteHardware: (id: string) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
-  onCheckoutHardware: (id: string, staffId: number, dueBack: string, notes: string) => Promise<void>;
+  onCheckoutHardware: (id: string, staffId: number | null, dueBack: string, notes: string) => Promise<void>;
   onCheckinHardware: (id: string, notes: string) => Promise<void>;
   /** Adds a staff record from a picker (needs directory:manage). */
   onAddStaff: (fullName: string) => Promise<StaffMember>;
