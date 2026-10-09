@@ -218,14 +218,16 @@ describe('migration 0004 and the legacy import', () => {
         ['HW-2', 'Deployed', ' finance ', 'Head Office', 'jane doe '],
         ['HW-3', 'In Stock', '', '', 'Unassigned'],
         ['HW-4', 'In Repair', 'Audit', 'Jinja', 'Bob Roe'],
+        ['HW-5', 'Deployed', '', '', 'Bob Roe'],
       ] as const;
       const insert = sqlite.prepare('INSERT INTO hardware (id, asset_name, lifecycle_state, department, location, assigned_to) VALUES (?, ?, ?, ?, ?, ?)');
       for (const [id, state, dept, loc, user] of rows) insert.run(id, 'Asset', state, dept, loc, user);
       sqlite.prepare("INSERT INTO software (id, name, category, department) VALUES ('SW-1', 'Office', 'Office', 'Legal')").run();
       // A past check-out by someone who no longer holds anything still becomes a staff record.
       sqlite.prepare("INSERT INTO asset_assignments (hardware_id, assignee, checked_out_by, checked_in_at) VALUES ('HW-3', 'Old Holder', 'x', '2026-01-01')").run();
-      // Open rows for the two Deployed assets, as migration 0003 would have made.
-      sqlite.prepare("INSERT INTO asset_assignments (hardware_id, assignee, checked_out_by) SELECT id, assigned_to, 'system' FROM hardware WHERE lifecycle_state = 'Deployed'").run();
+      // Open rows for HW-1 and HW-2, as migration 0003 would have made. HW-5 has none, like an asset
+      // added by the old import after 0003 had run.
+      sqlite.prepare("INSERT INTO asset_assignments (hardware_id, assignee, checked_out_by) SELECT id, assigned_to, 'system' FROM hardware WHERE id IN ('HW-1', 'HW-2')").run();
 
       migrate(legacy, { migrationsFolder: src });
       const all = (q: string) => sqlite.prepare(q).all();
@@ -241,14 +243,16 @@ describe('migration 0004 and the legacy import', () => {
         { id: 'HW-2', d: 2, l: 1, a: 2 },
         { id: 'HW-3', d: null, l: null, a: null },
         { id: 'HW-4', d: 1, l: 2, a: 1 },
+        { id: 'HW-5', d: null, l: null, a: 1 },
       ]);
       expect(all('SELECT department_id AS d FROM software')).toEqual([{ d: 3 }]);
-      // Every assignment points at its staff record, and the In Repair asset got its open row.
+      // Every assignment points at its staff record, and assigned assets in service without one got an open row.
       expect(all('SELECT hardware_id AS h, staff_id AS s, checked_in_at IS NULL AS open FROM asset_assignments ORDER BY hardware_id, id')).toEqual([
         { h: 'HW-1', s: 2, open: 1 },
         { h: 'HW-2', s: 2, open: 1 },
         { h: 'HW-3', s: 3, open: 0 },
         { h: 'HW-4', s: 1, open: 1 },
+        { h: 'HW-5', s: 1, open: 1 },
       ]);
       const columns = all("SELECT name FROM pragma_table_info('hardware')").map(c => (c as { name: string }).name);
       expect(columns).not.toContain('department');
