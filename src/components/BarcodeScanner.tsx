@@ -4,31 +4,40 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, ScanLine, Tag, Check, HelpCircle, Laptop, User, MapPin, RefreshCw } from 'lucide-react';
+import { Camera, ScanLine, Check, HelpCircle, RefreshCw } from 'lucide-react';
 import { LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
-import { HardwareAsset, LifecycleState, UserRole, canEditInventory } from '../types';
+import { canEditInventory, type Directory, type HardwareAsset, type LifecycleState, type StaffMember, type UserRole } from '../types';
 import AssetPassportCard from './AssetPassportCard';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
+import { locationOptions } from './inventory/directoryOptions';
+import { RecordSelect } from './inventory/ui';
 
 interface BarcodeScannerProps {
   hardware: HardwareAsset[];
+  directory: Directory;
   currentUserRole: UserRole;
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
-  onCheckoutHardware: (id: string, assignee: string, dueBack: string, notes: string) => Promise<void>;
+  onCheckoutHardware: (id: string, staffId: number, dueBack: string, notes: string) => Promise<void>;
   onCheckinHardware: (id: string, notes: string) => Promise<void>;
+  /** Given when the user may add staff records (directory:manage). */
+  onAddStaff?: (fullName: string) => Promise<StaffMember>;
 }
 
 export default function BarcodeScanner({
   hardware,
+  directory,
   currentUserRole,
   onUpdateHardware,
   onChangeLifecycle,
   onCheckoutHardware,
   onCheckinHardware,
+  onAddStaff,
 }: BarcodeScannerProps) {
   const [selectedMockId, setSelectedMockId] = useState('');
-  const [scannedItem, setScannedItem] = useState<HardwareAsset | null>(null);
+  // The scanned asset is looked up from the latest list, so it shows the server's state after every change.
+  const [scannedId, setScannedId] = useState<string | null>(null);
+  const scannedItem = hardware.find(h => h.id === scannedId) ?? null;
   const [cameraActive, setCameraActive] = useState(false);
   const [scanMessage, setScanMessage] = useState('Position an URC asset barcode label within the lens frame.');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -36,8 +45,7 @@ export default function BarcodeScanner({
 
   // Field editing state for scanned item
   const [state, setState] = useState<LifecycleState>('In Stock');
-  const [assignee, setAssignee] = useState('');
-  const [location, setLocation] = useState('');
+  const [locationId, setLocationId] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -46,8 +54,7 @@ export default function BarcodeScanner({
   useEffect(() => {
     if (scannedItem) {
       setState(scannedItem.lifecycleState);
-      setAssignee(scannedItem.assignee ?? scannedItem.user);
-      setLocation(scannedItem.location);
+      setLocationId(scannedItem.locationId);
     }
   }, [scannedItem]);
 
@@ -93,11 +100,11 @@ export default function BarcodeScanner({
     setTimeout(() => {
       const match = hardware.find(h => h.id === selectedMockId);
       if (match) {
-        setScannedItem(match);
+        setScannedId(match.id);
         setScanMessage(`Scan Successful! Decoded ID: ${match.id}. Status loaded below.`);
       } else {
         setScanMessage('Decoded raw barcode, but no matching URC Hardware Asset was found in the database.');
-        setScannedItem(null);
+        setScannedId(null);
       }
     }, 800);
   };
@@ -114,18 +121,11 @@ export default function BarcodeScanner({
 
     setIsUpdating(true);
     try {
-      const updated: HardwareAsset = {
-        ...scannedItem,
-        // The server reads `user` before its legacy alias `assignee`, so set both.
-        user: assignee.trim(),
-        assignee: assignee.trim(),
-        location: location.trim(),
-      };
-      await onUpdateHardware(updated);
+      // Only send a change: an unchanged save would still write an "Update Hardware" audit entry.
+      if (locationId !== scannedItem.locationId) await onUpdateHardware({ ...scannedItem, locationId });
       // State changes have their own audited endpoint.
       if (state !== scannedItem.lifecycleState) await onChangeLifecycle(scannedItem.id, state, '');
-      setScannedItem({ ...updated, lifecycleState: state });
-      setScanMessage(`Successfully saved deployment updates for URC asset ${updated.id}.`);
+      setScanMessage(`Successfully saved deployment updates for URC asset ${scannedItem.id}.`);
     } catch (err) {
       setScanMessage(err instanceof Error ? err.message : 'An error occurred while updating the asset.');
     } finally {
@@ -133,18 +133,15 @@ export default function BarcodeScanner({
     }
   };
 
-  const handleCheckout = async (assigneeName: string, dueBack: string, notes: string) => {
+  const handleCheckout = async (staffId: number, dueBack: string, notes: string) => {
     if (!scannedItem) return;
-    await onCheckoutHardware(scannedItem.id, assigneeName, dueBack, notes);
-    setScannedItem({ ...scannedItem, lifecycleState: 'Deployed', assignee: assigneeName, user: assigneeName });
-    setScanMessage(`Checked out ${scannedItem.id} to ${assigneeName}.`);
+    await onCheckoutHardware(scannedItem.id, staffId, dueBack, notes);
+    setScanMessage(`Checked out ${scannedItem.id} to ${directory.staff.find(s => s.id === staffId)?.fullName ?? 'the selected staff member'}.`);
   };
 
   const handleCheckin = async (notes: string) => {
     if (!scannedItem) return;
     await onCheckinHardware(scannedItem.id, notes);
-    const nextState = scannedItem.lifecycleState === 'Deployed' ? 'In Stock' : scannedItem.lifecycleState;
-    setScannedItem({ ...scannedItem, lifecycleState: nextState, assignee: 'Unassigned', user: 'Unassigned' });
     setScanMessage(`Checked in ${scannedItem.id}.`);
   };
 
@@ -311,37 +308,11 @@ export default function BarcodeScanner({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Assignee (record only)</label>
-                    <div className="relative mt-1">
-                      <User className="absolute left-2.5 top-2.5 h-3 w-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Assignee staff name"
-                        value={assignee}
-                        onChange={(e) => setAssignee(e.target.value)}
-                        className="w-full pl-7 px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-[9px] font-extrabold text-slate-500 uppercase font-mono">Regional Office / Station Location</label>
-                    <div className="relative mt-1">
-                      <MapPin className="absolute left-2.5 top-2.5 h-3 w-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="e.g. Tororo Station House"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        className="w-full pl-7 px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                  <RecordSelect label="Location" value={locationId} options={locationOptions(directory)} onChange={setLocationId} />
                 </div>
 
                 <div className="bg-yellow-50/50 p-2.5 rounded border border-yellow-100/50 text-[10px] text-slate-500 leading-normal font-medium">
-                  Use Check out / Check in above to deploy or return an asset. Field technicians can correct the assignee and location, and move between In Stock and In Repair, here. To retire
+                  Use Check out / Check in above to deploy, return or reassign an asset. Field technicians can correct the location, and move between In Stock and In Repair, here. To retire
                   or dispose of an asset, use “Change state” in the register, which asks for a reason.
                 </div>
 
@@ -359,7 +330,7 @@ export default function BarcodeScanner({
               </form>
 
               {assignmentDialog === 'checkout' && (
-                <CheckoutDialog asset={scannedItem} onSubmit={handleCheckout} onClose={() => setAssignmentDialog(null)} />
+                <CheckoutDialog asset={scannedItem} staff={directory.staff} onAddStaff={onAddStaff} onSubmit={handleCheckout} onClose={() => setAssignmentDialog(null)} />
               )}
               {assignmentDialog === 'checkin' && (
                 <CheckinDialog asset={scannedItem} onSubmit={handleCheckin} onClose={() => setAssignmentDialog(null)} />

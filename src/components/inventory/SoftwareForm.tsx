@@ -1,12 +1,14 @@
-import type { SoftwareLicense } from '../../types';
+import { useState } from 'react';
+import type { Directory, SoftwareLicense } from '../../types';
+import { departmentOptions } from './directoryOptions';
 import { FormModal, useDraft, type FormContext } from './FormModal';
 import { SOFTWARE_CATEGORIES, STATUSES } from './model';
-import { DepartmentField, Field, SelectField, StatusOptions } from './ui';
+import { Field, RecordSelect, SelectField, StatusOptions } from './ui';
 
 type Category = SoftwareLicense['category'];
 
 const blank = {
-  id: '', name: '', category: 'Office', department: 'INFORMATION COMMUNICATION AND TECHNOLOGY', licenseKey: '', vendor: '',
+  id: '', name: '', category: 'Office', licenseKey: '', vendor: '',
   seatCapacity: '1', activeSeats: '0', subscriptionCost: '0', expiryDate: '', status: 'Active',
 };
 type Draft = typeof blank;
@@ -15,7 +17,6 @@ const toDraft = (s: SoftwareLicense): Draft => ({
   id: s.id,
   name: s.name,
   category: s.category,
-  department: s.department || blank.department,
   licenseKey: s.licenseKey,
   vendor: s.vendor,
   seatCapacity: String(s.seatCapacity ?? 0),
@@ -29,21 +30,25 @@ export default function SoftwareForm({
   ctx,
   initial,
   suggestedId,
+  directory,
   onSave,
 }: {
   ctx: FormContext;
   initial: SoftwareLicense | null;
   suggestedId: string;
+  directory: Directory;
   onSave: (item: SoftwareLicense) => Promise<void>;
 }) {
   const { draft, bind } = useDraft<Draft>(initial ? toDraft(initial) : { ...blank, id: suggestedId });
+  const [departmentId, setDepartmentId] = useState(initial?.departmentId ?? null);
 
   const submit = () =>
     onSave({
       id: draft.id.trim(),
       name: draft.name.trim(),
       category: draft.category as Category,
-      department: draft.department,
+      departmentId,
+      department: initial?.department ?? '',
       licenseKey: draft.licenseKey.trim(),
       vendor: draft.vendor.trim(),
       seatCapacity: Number(draft.seatCapacity) || 0,
@@ -59,7 +64,7 @@ export default function SoftwareForm({
         <Field label="Licence ID" required mono disabled={ctx.mode === 'edit'} {...bind('id')} />
         <Field label="Licence key" mono {...bind('licenseKey')} />
         <Field label="Licence / subscription title" required wide {...bind('name')} />
-        <DepartmentField {...bind('department')} />
+        <RecordSelect label="Department" wide value={departmentId} options={departmentOptions(directory)} onChange={setDepartmentId} />
         <SelectField label="Category" options={SOFTWARE_CATEGORIES} value={draft.category as Category} onChange={bind('category').onChange} />
         <Field label="Vendor / partner" {...bind('vendor')} />
         <Field label="Total seats" type="number" min={0} {...bind('seatCapacity')} />

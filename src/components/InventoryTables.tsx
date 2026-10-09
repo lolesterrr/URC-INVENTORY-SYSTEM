@@ -3,7 +3,7 @@
  * Building blocks live in ./inventory/.
  */
 import { useState } from 'react';
-import { HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, UserRole } from '../types';
+import type { Directory, HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
@@ -24,6 +24,7 @@ interface InventoryTablesProps {
   hardware: HardwareAsset[];
   software: SoftwareLicense[];
   serverComponents: ServerComponent[];
+  directory: Directory;
   currentUserRole: UserRole;
   permissions: Permission[];
   username: string;
@@ -31,8 +32,10 @@ interface InventoryTablesProps {
   onUpdateHardware: (item: HardwareAsset) => Promise<void>;
   onDeleteHardware: (id: string) => Promise<void>;
   onChangeLifecycle: (id: string, to: LifecycleState, note: string) => Promise<void>;
-  onCheckoutHardware: (id: string, assignee: string, dueBack: string, notes: string) => Promise<void>;
+  onCheckoutHardware: (id: string, staffId: number, dueBack: string, notes: string) => Promise<void>;
   onCheckinHardware: (id: string, notes: string) => Promise<void>;
+  /** Adds a staff record from a picker (needs directory:manage). */
+  onAddStaff: (fullName: string) => Promise<StaffMember>;
   onAddSoftware: (item: SoftwareLicense) => Promise<void>;
   onUpdateSoftware: (item: SoftwareLicense) => Promise<void>;
   onDeleteSoftware: (id: string) => Promise<void>;
@@ -68,7 +71,7 @@ function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
 }
 
 export default function InventoryTables(props: InventoryTablesProps) {
-  const { hardware, software, serverComponents, currentUserRole, permissions, username, selectedSubTab: tab } = props;
+  const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, selectedSubTab: tab } = props;
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [group, setGroup] = useState<HardwareGroup>('All');
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -77,6 +80,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
   const canEdit = permissions.includes('assets:write');
   const canDispose = permissions.includes('assets:dispose');
   const canReadHistory = permissions.includes('audit:read');
+  const addStaff = permissions.includes('directory:manage') ? props.onAddStaff : undefined;
   const close = () => setDialog(null);
 
   const shownHardware = filterHardware(hardware, filters, group);
@@ -110,6 +114,8 @@ export default function InventoryTables(props: InventoryTablesProps) {
             ctx={formCtx(dialog.item ? 'edit' : 'add')}
             initial={dialog.item}
             suggestedId={nextId('HW-', hardware.map(h => h.id))}
+            directory={directory}
+            onAddStaff={addStaff}
             onSave={dialog.item ? props.onUpdateHardware : props.onAddHardware}
           />
         );
@@ -119,6 +125,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
             ctx={formCtx(dialog.item ? 'edit' : 'add')}
             initial={dialog.item}
             suggestedId={nextId('SW-', software.map(s => s.id))}
+            directory={directory}
             onSave={dialog.item ? props.onUpdateSoftware : props.onAddSoftware}
           />
         );
@@ -148,7 +155,15 @@ export default function InventoryTables(props: InventoryTablesProps) {
       case 'history':
         return <HistoryDialog id={dialog.id} name={dialog.name} onClose={close} />;
       case 'checkout':
-        return <CheckoutDialog asset={dialog.item} onSubmit={(assignee, dueBack, notes) => props.onCheckoutHardware(dialog.item.id, assignee, dueBack, notes)} onClose={close} />;
+        return (
+          <CheckoutDialog
+            asset={dialog.item}
+            staff={directory.staff}
+            onAddStaff={addStaff}
+            onSubmit={(staffId, dueBack, notes) => props.onCheckoutHardware(dialog.item.id, staffId, dueBack, notes)}
+            onClose={close}
+          />
+        );
       case 'checkin':
         return <CheckinDialog asset={dialog.item} onSubmit={notes => props.onCheckinHardware(dialog.item.id, notes)} onClose={close} />;
     }
@@ -164,6 +179,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
         canEdit={canEdit}
         onExport={exportCsv}
         onAdd={openNew}
+        departments={directory.departments.map(d => d.name)}
       />
 
       <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">

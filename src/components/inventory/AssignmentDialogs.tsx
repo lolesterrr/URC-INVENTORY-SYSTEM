@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { LogIn, LogOut, RefreshCw } from 'lucide-react';
 import { api } from '../../api';
-import type { AssetAssignment, HardwareAsset } from '../../types';
+import type { AssetAssignment, HardwareAsset, StaffMember } from '../../types';
 import { assetName } from './model';
+import { StaffPicker } from './StaffPicker';
 import { ErrorNote, Field, ModalShell } from './ui';
 
 const noteField = (id: string, value: string, onChange: (v: string) => void, placeholder: string) => (
@@ -23,14 +24,19 @@ const noteField = (id: string, value: string, onChange: (v: string) => void, pla
 /** Deploys a hardware asset: In Stock or In Repair → Deployed. The only way to set an assignee and get there. */
 export function CheckoutDialog({
   asset,
+  staff,
+  onAddStaff,
   onSubmit,
   onClose,
 }: {
   asset: HardwareAsset;
-  onSubmit: (assignee: string, dueBack: string, notes: string) => Promise<void>;
+  staff: StaffMember[];
+  /** Given when the user may add staff records (directory:manage). */
+  onAddStaff?: (fullName: string) => Promise<StaffMember>;
+  onSubmit: (staffId: number, dueBack: string, notes: string) => Promise<void>;
   onClose: () => void;
 }) {
-  const [assignee, setAssignee] = useState(asset.assignee && asset.assignee !== 'Unassigned' ? asset.assignee : '');
+  const [staffId, setStaffId] = useState<number | null>(null);
   const [dueBack, setDueBack] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,11 +44,11 @@ export function CheckoutDialog({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assignee.trim()) return;
+    if (staffId === null) return;
     setBusy(true);
     setError(null);
     try {
-      await onSubmit(assignee.trim(), dueBack, notes.trim());
+      await onSubmit(staffId, dueBack, notes.trim());
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not check out this asset.');
@@ -57,7 +63,7 @@ export function CheckoutDialog({
           <span className="font-bold text-slate-900">{assetName(asset) || asset.id}</span> <span className="font-mono text-slate-400">({asset.id})</span> is{' '}
           <strong>{asset.lifecycleState}</strong>.
         </p>
-        <Field label="Assignee" required placeholder="Full name of the staff member" value={assignee} onChange={setAssignee} />
+        <StaffPicker label="Assignee" staff={staff} value={staffId} onChange={setStaffId} onAddStaff={onAddStaff} />
         <Field label="Due back" type="date" value={dueBack} onChange={setDueBack} />
         {noteField('checkout-notes', notes, setNotes, 'Optional')}
         <ErrorNote message={error} />
@@ -65,7 +71,7 @@ export function CheckoutDialog({
           <button type="button" onClick={onClose} disabled={busy} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs uppercase font-mono">
             Cancel
           </button>
-          <button type="submit" disabled={busy || !assignee.trim()} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs uppercase font-mono flex items-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={busy || staffId === null} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs uppercase font-mono flex items-center gap-2 disabled:opacity-50">
             {busy && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
             {busy ? 'Checking out…' : 'Check out'}
           </button>
