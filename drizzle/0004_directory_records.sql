@@ -75,10 +75,11 @@ UPDATE `asset_assignments` SET `staff_id` = (SELECT `id` FROM `staff` WHERE lowe
 -- Give every assigned asset in those states that has none the open row it should have. This covers assets
 -- that were In Repair before check-out existed, and assets added by `npm run import-json` after migration
 -- 0003 had already run (the import did not open check-outs before this release).
+-- A Deployed asset with no assignee (legacy "In Use" records) is a shared device: it gets an open row with no person.
 INSERT INTO `asset_assignments` (`hardware_id`, `staff_id`, `assignee`, `checked_out_at`, `checked_out_by`, `notes`)
-SELECT `h`.`id`, `h`.`assignee_id`, `s`.`full_name`, coalesce(`h`.`lifecycle_changed_at`, `h`.`created_at`), 'system', 'Backfilled when staff records were introduced.'
-FROM `hardware` `h` JOIN `staff` `s` ON `s`.`id` = `h`.`assignee_id`
-WHERE `h`.`lifecycle_state` IN ('Deployed', 'In Repair')
+SELECT `h`.`id`, `h`.`assignee_id`, coalesce(`s`.`full_name`, ''), coalesce(`h`.`lifecycle_changed_at`, `h`.`created_at`), 'system', 'Backfilled when staff records were introduced.'
+FROM `hardware` `h` LEFT JOIN `staff` `s` ON `s`.`id` = `h`.`assignee_id`
+WHERE (`h`.`lifecycle_state` = 'Deployed' OR (`h`.`lifecycle_state` = 'In Repair' AND `h`.`assignee_id` IS NOT NULL))
   AND NOT EXISTS (SELECT 1 FROM `asset_assignments` `a` WHERE `a`.`hardware_id` = `h`.`id` AND `a`.`checked_in_at` IS NULL);
 --> statement-breakpoint
 ALTER TABLE `software` ADD `department_id` integer REFERENCES departments(id);

@@ -48,8 +48,11 @@ describe('hardware lifecycle', () => {
     expect(created.body.lifecycleState).toBe('In Stock');
     expect(created.body.lifecycleChangedAt).toBeTruthy();
     expect(created.body.condition).toBe('');
-    // A Deployed asset always has an assignee, so one that starts Deployed needs it now.
-    await officer.post('/api/hardware').send({ id: 'HW-L-002', assetName: 'Desktop', lifecycleState: 'Deployed' }).expect(400);
+    // Starting Deployed with nobody named records a shared device; it still gets an open check-out.
+    const shared = await officer.post('/api/hardware').send({ id: 'HW-L-005', assetName: 'Switch', lifecycleState: 'Deployed' }).expect(201);
+    expect(shared.body).toMatchObject({ lifecycleState: 'Deployed', assigneeId: null, assignee: '' });
+    const sharedRows = await officer.get('/api/hardware/HW-L-005/assignments').expect(200);
+    expect(sharedRows.body).toMatchObject([{ staffId: null, assignee: '', open: true }]);
     const deployed = await officer.post('/api/hardware').send({ id: 'HW-L-002', assetName: 'Desktop', lifecycleState: 'Deployed', assigneeId: person('Jane') }).expect(201);
     expect(deployed.body.lifecycleState).toBe('Deployed');
     expect(deployed.body.assignee).toBe('Jane');
@@ -210,6 +213,18 @@ describe('check-out / check-in', () => {
     const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
     expect(assignments.body[0]).toMatchObject({ open: false });
     expect(assignments.body[0].notes).toMatch(/Closed by a move to In Stock/);
+  });
+
+  it('deploys a shared device with no individual assignee, and checks it back in', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Core switch' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({}).expect(400); // the choice must be explicit
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: null }).expect(201);
+    expect(out.body).toMatchObject({ lifecycleState: 'Deployed', assigneeId: null, assignee: '' });
+    const back = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(200);
+    expect(back.body.lifecycleState).toBe('In Stock');
+    const history = await officer.get(`/api/hardware/${ID}/history`).expect(200);
+    expect(history.body.map((e: { details: string }) => e.details).join(' ')).toMatch(/deployed as a shared device.*checked in \(shared device\)/);
   });
 
   it('Auditor and Manager cannot check an asset out or in', async () => {

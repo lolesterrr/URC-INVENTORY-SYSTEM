@@ -1,11 +1,11 @@
 import { Router, type Request, type Response } from 'express';
 import { and, asc, count, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import type { DB } from '../db';
-import { departments, hardware, locations, staff } from '../db/schema';
+import { assetAssignments, departments, hardware, locations, software, staff } from '../db/schema';
 import { requirePermission } from '../auth/session';
 import { recordAudit } from '../services/audit';
 import { checkReference, locationPath, sameText } from '../services/directory';
-import { departmentInput, locationInput, locationUpdate, parseBody, staffInput, staffUpdate } from '../validation';
+import { departmentInput, locationInput, locationUpdate, mergeInput, parseBody, staffInput, staffUpdate } from '../validation';
 
 // Departments, locations and staff: the records assets point to. Reads need assets:read, changes need
 // directory:manage. Records are archived (soft-deleted), never removed, so old assets and history keep their names.
@@ -22,6 +22,34 @@ function assetCounts(db: DB, column: typeof hardware.departmentId | typeof hardw
 }
 
 const conflict = (res: Response, error: string) => res.status(409).json({ error });
+
+/**
+ * Validates a merge request: the duplicate (URL id) and the record kept (`intoId`) must both exist, differ,
+ * and the record kept must be active. Sends the error and returns null when they don't.
+ */
+function mergePair<T extends { id: number; deletedAt: string | null }>(req: Request, res: Response, find: (id: number | null) => T | undefined, label: string) {
+  const source = find(recordId(req));
+  if (!source) {
+    res.status(404).json({ error: `${label} not found.` });
+    return null;
+  }
+  const body = parseBody(mergeInput, req.body, res);
+  if (!body) return null;
+  const target = find(body.intoId);
+  if (!target) {
+    res.status(400).json({ error: `The ${label.toLowerCase()} to keep does not exist.`, fields: [{ field: 'intoId', message: 'Not found' }] });
+    return null;
+  }
+  if (target.id === source.id) {
+    conflict(res, `Pick a different ${label.toLowerCase()} to keep.`);
+    return null;
+  }
+  if (target.deletedAt) {
+    conflict(res, `The ${label.toLowerCase()} to keep is archived. Restore it first.`);
+    return null;
+  }
+  return { source, target };
+}
 
 export function departmentsRouter(db: DB) {
   const router = Router();
@@ -74,6 +102,30 @@ export function departmentsRouter(db: DB) {
     db.update(departments).set({ deletedAt: null, updatedAt: new Date().toISOString() }).where(eq(departments.id, existing.id)).run();
     recordAudit(db, req, { action: 'Restore Department', details: `Restored department ${existing.name}.`, entityType: 'department', entityId: String(existing.id) });
     res.json({ success: true });
+  });
+
+  // Moves everything that points at a duplicate onto the department kept, then archives the duplicate.
+  router.post('/:id/merge', requirePermission('directory:manage'), (req, res) => {
+    const pair = mergePair(req, res, find, 'Department');
+    if (!pair) return;
+    const { source, target } = pair;
+    const now = new Date().toISOString();
+    const moved = db.transaction(tx => {
+      const assets = tx.update(hardware).set({ departmentId: target.id }).where(eq(hardware.departmentId, source.id)).run().changes;
+      const licences = tx.update(software).set({ departmentId: target.id }).where(eq(software.departmentId, source.id)).run().changes;
+      const people = tx.update(staff).set({ departmentId: target.id }).where(eq(staff.departmentId, source.id)).run().changes;
+      tx.update(departments).set({ deletedAt: source.deletedAt ?? now, updatedAt: now }).where(eq(departments.id, source.id)).run();
+      return { assets, licences, people };
+    });
+    recordAudit(db, req, {
+      action: 'Merge Department',
+      details: `Merged department ${source.name} into ${target.name}: moved ${moved.assets} assets, ${moved.licences} licences and ${moved.people} staff, and archived ${source.name}.`,
+      entityType: 'department',
+      entityId: String(source.id),
+      before: source,
+      after: { mergedInto: target.id, ...moved },
+    });
+    res.json({ success: true, moved });
   });
 
   return router;
@@ -155,6 +207,38 @@ export function locationsRouter(db: DB) {
     res.json({ success: true });
   });
 
+  // Moves assets and sub-locations from a duplicate onto the location kept, then archives the duplicate.
+  router.post('/:id/merge', requirePermission('directory:manage'), (req, res) => {
+    const pair = mergePair(req, res, find, 'Location');
+    if (!pair) return;
+    const { source, target } = pair;
+    const byId = all();
+    for (let cur: typeof target | undefined = target; cur; cur = cur.parentId === null ? undefined : byId.get(cur.parentId)) {
+      if (cur.id === source.id) return conflict(res, 'A location cannot be merged into one of its own sub-locations.');
+    }
+    const children = db.select().from(locations).where(eq(locations.parentId, source.id)).all();
+    const clash = children.find(c => nameTaken(c.name, target.id, c.id));
+    if (clash) return conflict(res, `${locationPath(byId, target.id)} already has a sub-location named ${clash.name}. Rename or merge one of them first.`);
+    const sourcePath = locationPath(byId, source.id);
+    const targetPath = locationPath(byId, target.id);
+    const now = new Date().toISOString();
+    const moved = db.transaction(tx => {
+      const assets = tx.update(hardware).set({ locationId: target.id }).where(eq(hardware.locationId, source.id)).run().changes;
+      const subLocations = tx.update(locations).set({ parentId: target.id, updatedAt: now }).where(eq(locations.parentId, source.id)).run().changes;
+      tx.update(locations).set({ deletedAt: source.deletedAt ?? now, updatedAt: now }).where(eq(locations.id, source.id)).run();
+      return { assets, subLocations };
+    });
+    recordAudit(db, req, {
+      action: 'Merge Location',
+      details: `Merged location ${sourcePath} into ${targetPath}: moved ${moved.assets} assets and ${moved.subLocations} sub-locations, and archived ${sourcePath}.`,
+      entityType: 'location',
+      entityId: String(source.id),
+      before: { ...source, path: sourcePath },
+      after: { mergedInto: target.id, ...moved },
+    });
+    res.json({ success: true, moved });
+  });
+
   return router;
 }
 
@@ -224,6 +308,36 @@ export function staffRouter(db: DB) {
     db.update(staff).set({ deletedAt: null, updatedAt: new Date().toISOString() }).where(eq(staff.id, existing.id)).run();
     recordAudit(db, req, { action: 'Restore Staff', details: `Restored staff member ${existing.fullName}.`, entityType: 'staff', entityId: String(existing.id) });
     res.json({ success: true });
+  });
+
+
+  // Moves assets and check-out history from a duplicate onto the person kept, then archives the duplicate.
+  // Each assignment row keeps its name snapshot, so the history still shows the name used at the time.
+  router.post('/:id/merge', requirePermission('directory:manage'), (req, res) => {
+    const pair = mergePair(req, res, find, 'Staff member');
+    if (!pair) return;
+    const { source, target } = pair;
+    const now = new Date().toISOString();
+    const moved = db.transaction(tx => {
+      const assets = tx.update(hardware).set({ assigneeId: target.id }).where(eq(hardware.assigneeId, source.id)).run().changes;
+      const assignments = tx.update(assetAssignments).set({ staffId: target.id }).where(eq(assetAssignments.staffId, source.id)).run().changes;
+      // The person kept takes over a staff number or department only where they have none.
+      const fill: Partial<typeof staff.$inferInsert> = {};
+      if (!target.staffNumber && source.staffNumber) fill.staffNumber = source.staffNumber;
+      if (target.departmentId === null && source.departmentId !== null) fill.departmentId = source.departmentId;
+      tx.update(staff).set({ deletedAt: source.deletedAt ?? now, updatedAt: now, ...(fill.staffNumber ? { staffNumber: '' } : {}) }).where(eq(staff.id, source.id)).run();
+      if (Object.keys(fill).length) tx.update(staff).set({ ...fill, updatedAt: now }).where(eq(staff.id, target.id)).run();
+      return { assets, assignments };
+    });
+    recordAudit(db, req, {
+      action: 'Merge Staff',
+      details: `Merged staff member ${source.fullName} into ${target.fullName}: moved ${moved.assets} assets and ${moved.assignments} check-out records, and archived the duplicate.`,
+      entityType: 'staff',
+      entityId: String(source.id),
+      before: withDepartment(source),
+      after: { mergedInto: target.id, ...moved },
+    });
+    res.json({ success: true, moved });
   });
 
   return router;

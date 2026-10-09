@@ -81,10 +81,6 @@ export function hardwareRouter(db: DB) {
     const cols = toColumns(fields);
     if (!cols.assetName) return res.status(400).json({ error: 'Asset name is required.' });
     if (badReference(res, cols)) return;
-    // A Deployed asset always has an open check-out, so one that starts Deployed needs its assignee now.
-    if (lifecycleState === 'Deployed' && !assigneeId) {
-      return res.status(400).json({ error: 'Pick who has an asset that starts Deployed.', fields: [{ field: 'assigneeId', message: 'Required' }] });
-    }
     if (lifecycleState !== 'Deployed' && assigneeId) {
       return res.status(400).json({ error: 'Only an asset that starts Deployed has an assignee. Check it out instead.', fields: [{ field: 'assigneeId', message: 'Not allowed' }] });
     }
@@ -106,8 +102,9 @@ export function hardwareRouter(db: DB) {
     db.insert(hardware).values(values).run();
     const created = active(body.id)!;
     const after = snapshot(created);
-    // A new asset may start Deployed (e.g. recording one already in the field); open its assignment too.
-    if (created.assigneeId !== null) {
+    // A new asset may start Deployed (e.g. recording one already in the field). A Deployed asset always has an
+    // open check-out, with or without a person (shared devices), so open it now.
+    if (created.lifecycleState === 'Deployed') {
       db.insert(assetAssignments)
         .values({ hardwareId: created.id, staffId: created.assigneeId, assignee: after.assignee, checkedOutAt: values.lifecycleChangedAt, checkedOutBy: req.user!.username, notes: 'Set at creation.' })
         .run();
@@ -208,21 +205,22 @@ export function hardwareRouter(db: DB) {
     }
     const staffError = checkReference(db, 'staff', body.staffId);
     if (staffError) return res.status(400).json({ error: staffError, fields: [{ field: 'staffId', message: staffError }] });
-    const person = db.select().from(staff).where(eq(staff.id, body.staffId)).get()!;
+    // No person: a shared device. The assignment row still opens, so check-in works the same way.
+    const person = body.staffId === null ? null : db.select().from(staff).where(eq(staff.id, body.staffId)).get()!;
     const dir = loadDirectory(db);
     const now = new Date().toISOString();
     db.insert(assetAssignments)
-      .values({ hardwareId: existing.id, staffId: person.id, assignee: person.fullName, checkedOutAt: now, checkedOutBy: req.user!.username, dueBack: body.dueBack || null, notes: body.notes })
+      .values({ hardwareId: existing.id, staffId: person?.id ?? null, assignee: person?.fullName ?? '', checkedOutAt: now, checkedOutBy: req.user!.username, dueBack: body.dueBack || null, notes: body.notes })
       .run();
-    db.update(hardware).set({ lifecycleState: 'Deployed', lifecycleChangedAt: now, assigneeId: person.id, updatedAt: now }).where(eq(hardware.id, existing.id)).run();
+    db.update(hardware).set({ lifecycleState: 'Deployed', lifecycleChangedAt: now, assigneeId: person?.id ?? null, updatedAt: now }).where(eq(hardware.id, existing.id)).run();
     const updated = active(existing.id)!;
     recordAudit(db, req, {
       action: 'Check Out',
-      details: `${updated.assetName} (${updated.id}): checked out to ${person.fullName}.${body.dueBack ? ` Due back ${body.dueBack}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
+      details: `${updated.assetName} (${updated.id}): ${person ? `checked out to ${person.fullName}` : 'deployed as a shared device (no individual assignee)'}.${body.dueBack ? ` Due back ${body.dueBack}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
       entityType: 'hardware',
       entityId: updated.id,
       before: { lifecycleState: existing.lifecycleState, assignee: dir.staff(existing.assigneeId) },
-      after: { lifecycleState: 'Deployed', assignee: person.fullName },
+      after: { lifecycleState: 'Deployed', assignee: person?.fullName ?? '' },
     });
     runAlertChecks(db);
     res.status(201).json(hardwareToApi(updated, dir));
@@ -257,7 +255,7 @@ export function hardwareRouter(db: DB) {
     const updated = active(existing.id)!;
     recordAudit(db, req, {
       action: 'Check In',
-      details: `${updated.assetName} (${updated.id}): checked in from ${assignment.assignee}.${toState === existing.lifecycleState ? ` State stays ${toState}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
+      details: `${updated.assetName} (${updated.id}): checked in${assignment.assignee ? ` from ${assignment.assignee}` : ' (shared device)'}.${toState === existing.lifecycleState ? ` State stays ${toState}.` : ''}${body.notes ? ` Note: ${body.notes}` : ''}`,
       entityType: 'hardware',
       entityId: updated.id,
       before: { lifecycleState: existing.lifecycleState, assignee: assignment.assignee },

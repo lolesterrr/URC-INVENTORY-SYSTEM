@@ -58,7 +58,8 @@ export const hardwareLifecycle = z.object({
 });
 
 export const hardwareCheckout = z.object({
-  staffId: z.number({ error: 'Pick a staff member' }).int().positive(),
+  // null deploys a shared device (switch, shared printer) with no individual assignee. It must be sent explicitly.
+  staffId: z.number({ error: 'Pick a staff member, or deploy it as shared' }).int().positive().nullable(),
   dueBack: isoDate.optional().default(''),
   notes: text(500).optional().default(''),
 });
@@ -97,6 +98,9 @@ export const componentCreate = componentFields.partial({ serialNumber: true, sta
 export const componentUpdate = componentFields.partial();
 
 const recordName = text(100).min(1, 'Name is required');
+
+/** Merging a duplicate directory record into the one that is kept. */
+export const mergeInput = z.object({ intoId: z.number({ error: 'Pick the record to keep' }).int().positive() });
 
 export const departmentInput = z.object({ name: recordName });
 

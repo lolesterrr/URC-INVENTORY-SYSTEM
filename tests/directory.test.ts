@@ -146,6 +146,81 @@ describe('staff', () => {
   });
 });
 
+describe('merging duplicates', () => {
+  it('moves assets, licences and staff onto the department kept, then archives the duplicate', async () => {
+    const officer = await agentFor('IT Officer');
+    const keep = await created(officer.post('/api/departments').send({ name: 'Finance' }));
+    const dup = await created(officer.post('/api/departments').send({ name: 'Finance Dept' }));
+    await officer.post('/api/hardware').send({ id: 'HW-1', assetName: 'A', departmentId: dup.id }).expect(201);
+    await officer.post('/api/software').send({ id: 'SW-1', name: 'Office', category: 'Office', departmentId: dup.id }).expect(201);
+    await officer.post('/api/staff').send({ fullName: 'Jane Doe', departmentId: dup.id }).expect(201);
+
+    await officer.post(`/api/departments/${dup.id}/merge`).send({ intoId: dup.id }).expect(409);
+    await officer.post(`/api/departments/${dup.id}/merge`).send({ intoId: 9999 }).expect(400);
+    const res = await officer.post(`/api/departments/${dup.id}/merge`).send({ intoId: keep.id }).expect(200);
+    expect(res.body.moved).toEqual({ assets: 1, licences: 1, people: 1 });
+
+    const deps = await officer.get('/api/departments').expect(200);
+    expect(deps.body).toMatchObject([
+      { name: 'Finance', archived: false, assetCount: 1, staffCount: 1 },
+      { name: 'Finance Dept', archived: true, assetCount: 0, staffCount: 0 },
+    ]);
+    expect((await officer.get('/api/software').expect(200)).body[0].department).toBe('Finance');
+    // Merging into an archived record is refused.
+    await officer.post(`/api/departments/${keep.id}/merge`).send({ intoId: dup.id }).expect(409);
+    const note = db.$client.prepare("SELECT details FROM audit_log WHERE action = 'Merge Department'").get() as { details: string };
+    expect(note.details).toMatch(/moved 1 assets, 1 licences and 1 staff/);
+    const manager = await agentFor('Manager');
+    await manager.post(`/api/departments/${dup.id}/merge`).send({ intoId: keep.id }).expect(403);
+  });
+
+  it('moves assets and sub-locations, refusing loops and name clashes', async () => {
+    const officer = await agentFor('IT Officer');
+    const keep = await created(officer.post('/api/locations').send({ name: 'Head Office' }));
+    const dup = await created(officer.post('/api/locations').send({ name: 'HQ' }));
+    const child = await created(officer.post('/api/locations').send({ name: 'Stores', parentId: dup.id }));
+    await officer.post('/api/hardware').send({ id: 'HW-1', assetName: 'A', locationId: dup.id }).expect(201);
+
+    const loop = await officer.post(`/api/locations/${dup.id}/merge`).send({ intoId: child.id }).expect(409);
+    expect(loop.body.error).toMatch(/own sub-locations/);
+    const clashing = await created(officer.post('/api/locations').send({ name: 'stores', parentId: keep.id }));
+    const clash = await officer.post(`/api/locations/${dup.id}/merge`).send({ intoId: keep.id }).expect(409);
+    expect(clash.body.error).toMatch(/already has a sub-location named Stores/);
+    await officer.put(`/api/locations/${clashing.id}`).send({ name: 'Main stores' }).expect(200);
+
+    const res = await officer.post(`/api/locations/${dup.id}/merge`).send({ intoId: keep.id }).expect(200);
+    expect(res.body.moved).toEqual({ assets: 1, subLocations: 1 });
+    const hw = await officer.get('/api/hardware').expect(200);
+    expect(hw.body[0].location).toBe('Head Office');
+    const locs = await officer.get('/api/locations').expect(200);
+    expect(locs.body.find((l: { id: number }) => l.id === child.id).path).toBe('Head Office / Stores');
+  });
+
+  it('moves a person\'s assets and check-out history, keeping the names used at the time', async () => {
+    const officer = await agentFor('IT Officer');
+    const dept = await created(officer.post('/api/departments').send({ name: 'Finance' }));
+    const keep = await created(officer.post('/api/staff').send({ fullName: 'Jane Doe' }));
+    const dup = await created(officer.post('/api/staff').send({ fullName: 'J. Doe', staffNumber: 'PF-7', departmentId: dept.id }));
+    await officer.post('/api/hardware').send({ id: 'HW-1', assetName: 'A' }).expect(201);
+    await officer.post('/api/hardware/HW-1/checkout').send({ staffId: dup.id }).expect(201);
+    await officer.post('/api/hardware/HW-1/checkin').send({}).expect(200);
+    await officer.post('/api/hardware/HW-1/checkout').send({ staffId: dup.id }).expect(201);
+
+    const res = await officer.post(`/api/staff/${dup.id}/merge`).send({ intoId: keep.id }).expect(200);
+    expect(res.body.moved).toEqual({ assets: 1, assignments: 2 });
+    const hw = await officer.get('/api/hardware').expect(200);
+    expect(hw.body[0]).toMatchObject({ assigneeId: keep.id, assignee: 'Jane Doe' });
+    const rows = await officer.get('/api/hardware/HW-1/assignments').expect(200);
+    expect(rows.body.map((r: { staffId: number; assignee: string }) => [r.staffId, r.assignee])).toEqual([[keep.id, 'J. Doe'], [keep.id, 'J. Doe']]);
+    // The person kept takes over the staff number and department they lacked.
+    const people = await officer.get('/api/staff').expect(200);
+    expect(people.body.find((p: { id: number }) => p.id === keep.id)).toMatchObject({ staffNumber: 'PF-7', department: 'Finance', assetCount: 1 });
+    expect(people.body.find((p: { id: number }) => p.id === dup.id)).toMatchObject({ archived: true, staffNumber: '' });
+    // Check-in now releases the merged record.
+    await officer.post('/api/hardware/HW-1/checkin').send({}).expect(200);
+  });
+});
+
 describe('assets point at directory records', () => {
   it('shows names, follows renames, and rejects missing or archived records', async () => {
     const officer = await agentFor('IT Officer');
@@ -219,6 +294,7 @@ describe('migration 0004 and the legacy import', () => {
         ['HW-3', 'In Stock', '', '', 'Unassigned'],
         ['HW-4', 'In Repair', 'Audit', 'Jinja', 'Bob Roe'],
         ['HW-5', 'Deployed', '', '', 'Bob Roe'],
+        ['HW-6', 'Deployed', '', '', 'Unassigned'],
       ] as const;
       const insert = sqlite.prepare('INSERT INTO hardware (id, asset_name, lifecycle_state, department, location, assigned_to) VALUES (?, ?, ?, ?, ?, ?)');
       for (const [id, state, dept, loc, user] of rows) insert.run(id, 'Asset', state, dept, loc, user);
@@ -244,15 +320,18 @@ describe('migration 0004 and the legacy import', () => {
         { id: 'HW-3', d: null, l: null, a: null },
         { id: 'HW-4', d: 1, l: 2, a: 1 },
         { id: 'HW-5', d: null, l: null, a: 1 },
+        { id: 'HW-6', d: null, l: null, a: null },
       ]);
       expect(all('SELECT department_id AS d FROM software')).toEqual([{ d: 3 }]);
-      // Every assignment points at its staff record, and assigned assets in service without one got an open row.
+      // Every assignment points at its staff record. Assets in service without an open row got one; the unassigned
+      // Deployed one is a shared device (no person).
       expect(all('SELECT hardware_id AS h, staff_id AS s, checked_in_at IS NULL AS open FROM asset_assignments ORDER BY hardware_id, id')).toEqual([
         { h: 'HW-1', s: 2, open: 1 },
         { h: 'HW-2', s: 2, open: 1 },
         { h: 'HW-3', s: 3, open: 0 },
         { h: 'HW-4', s: 1, open: 1 },
         { h: 'HW-5', s: 1, open: 1 },
+        { h: 'HW-6', s: null, open: 1 },
       ]);
       const columns = all("SELECT name FROM pragma_table_info('hardware')").map(c => (c as { name: string }).name);
       expect(columns).not.toContain('department');

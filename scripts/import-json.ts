@@ -93,9 +93,11 @@ export function importLegacy(db: DB, data: Record<string, unknown>) {
         lifecycleChangedAt: now,
         category: fields.category ?? detectCategory(assetName, fields.model ?? ''),
       }).run();
-      // Same rule as the app: an assigned asset in service has an open check-out.
-      if (assigneeId !== null && (r.lifecycleState === 'Deployed' || r.lifecycleState === 'In Repair')) {
-        tx.insert(assetAssignments).values({ hardwareId: r.id, staffId: assigneeId, assignee: (user || assignee)!, checkedOutAt: now, checkedOutBy: 'system', notes: 'Imported from the legacy file.' }).run();
+      // Same rule as the app: a Deployed asset always has an open check-out (with nobody named, it is a shared
+      // device), and an assigned asset In Repair keeps its check-out.
+      if (r.lifecycleState === 'Deployed' || (assigneeId !== null && r.lifecycleState === 'In Repair')) {
+        const name = assigneeId === null ? '' : (user || assignee || '').trim();
+        tx.insert(assetAssignments).values({ hardwareId: r.id, staffId: assigneeId, assignee: name, checkedOutAt: now, checkedOutBy: 'system', notes: 'Imported from the legacy file.' }).run();
       }
     });
     const sw = importRows('software', arr(data.software), softwareImport, id => Boolean(tx.select({ id: software.id }).from(software).where(eqId(software.id, id)).get()), r => {
