@@ -42,3 +42,4 @@ React 19 + Vite + Tailwind (`src/`). Express 5 + TypeScript (`server/`). `shared
 - Validate every request body on the server with a schema.
 - Keep components under ~400 lines. Split large files when you touch them.
 - Small, focused commits in conventional style (`feat:`, `fix:`, `refactor:`, `docs:`).
+- Commits are authored as `lolesterrr <178182850+lolesterrr@users.noreply.github.com>`, unsigned. In cloud sessions `.claude/hooks/session-start.mjs` sets this up when the session starts; if `git config user.email` shows anything else, run `node .claude/hooks/session-start.mjs` before committing. Don't add `Co-Authored-By` or `Claude-Session` lines to commit messages, or a "Generated with Claude Code" line to pull request descriptions. Leave older commits as they are.
