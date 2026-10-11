@@ -42,11 +42,11 @@ export default function AssetPassportCard({ item }: { item: HardwareAsset }) {
         </div>
         <div>
           <span className="text-slate-400 font-mono block uppercase text-[8.5px]">User / Assignee</span>
-          <span className="font-bold text-slate-800">{item.user || item.assignee}</span>
+          <span className="font-bold text-slate-800">{item.assignee || '—'}</span>
         </div>
         <div>
           <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Location</span>
-          <span className="font-semibold text-slate-700">{item.location}</span>
+          <span className="font-semibold text-slate-700">{item.location || '—'}</span>
         </div>
         <div>
           <span className="text-slate-400 font-mono block uppercase text-[8.5px]">Model</span>

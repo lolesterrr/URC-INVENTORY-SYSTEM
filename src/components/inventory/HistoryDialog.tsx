@@ -4,8 +4,8 @@ import { api } from '../../api';
 import type { AuditLog } from '../../types';
 import { ErrorNote, ModalShell } from './ui';
 
-// Bookkeeping fields that change on every save and would only add noise.
-const IGNORED = new Set(['updatedAt', 'createdAt', 'lifecycleChangedAt']);
+// Bookkeeping fields that change on every save, and record ids whose names are shown instead.
+const IGNORED = new Set(['updatedAt', 'createdAt', 'lifecycleChangedAt', 'departmentId', 'locationId', 'assigneeId']);
 
 const show = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v));
 

@@ -31,6 +31,7 @@ React 19 + Vite + Tailwind (`src/`). Express 5 + TypeScript (`server/`). `shared
 - Every API route declares `requirePermission(...)`. Roles are mapped to permissions in `server/auth/permissions.ts`.
 - Every data change calls `recordAudit()` with before/after values. `audit_log` is append-only.
 - Inventory deletes are soft deletes (`deleted_at`).
+- Assets reference departments, locations and staff by id (`server/routes/directory.ts`); the API adds the display names. The assignee changes only through check-out/check-in (`PUT` ignores it).
 - Hardware lifecycle states change only through `POST /api/hardware/:id/lifecycle` (rules in `shared/lifecycle.ts`). `PUT` ignores `lifecycleState`, and disposed assets are read-only.
 - A migration that needs data changes: `npx drizzle-kit generate --custom --name <name>`, write the SQL, then regenerate that migration's snapshot from the schema, because `--custom` copies the previous one. `npx drizzle-kit generate` must then report "No schema changes".
 - The frontend calls the API through `src/api.ts` only (data loading and saving: `src/hooks/useInventoryData.ts`).

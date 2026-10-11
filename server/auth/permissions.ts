@@ -6,6 +6,8 @@ export const PERMISSIONS = {
   'assets:delete': ['Admin', 'IT Officer'],
   // Marking an asset Disposed is the disposal approval (Manager approves write-offs).
   'assets:dispose': ['Admin', 'Manager'],
+  // Departments, locations and staff (the records assets point to).
+  'directory:manage': ['Admin', 'IT Officer'],
   'alerts:manage': ['Admin', 'IT Officer'],
   'audit:read': ['Admin', 'IT Officer', 'Manager', 'Auditor'],
   'users:manage': ['Admin'],

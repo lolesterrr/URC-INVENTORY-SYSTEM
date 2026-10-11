@@ -11,7 +11,7 @@ import { createApp } from '../server/app';
 import { createUser } from '../server/services/users';
 import { legacyStatusToLifecycle } from '../server/services/lifecycle';
 import { importLegacy } from '../scripts/import-json';
-import type { Role } from '../server/db/schema';
+import { staff, type Role } from '../server/db/schema';
 
 const PASSWORD = 'Str0ng-Passw0rd!';
 let db: DB;
@@ -30,6 +30,14 @@ async function agentFor(role: Role) {
   return agent;
 }
 
+/** A staff record to check assets out to (one per name per test). */
+const people = new Map<string, number>();
+beforeEach(() => people.clear());
+function person(fullName: string) {
+  if (!people.has(fullName)) people.set(fullName, db.insert(staff).values({ fullName }).returning().get().id);
+  return people.get(fullName)!;
+}
+
 const ID = 'HW-L-001';
 const move = (agent: request.Agent, to: string, note?: string) => agent.post(`/api/hardware/${ID}/lifecycle`).send({ to, note });
 
@@ -40,15 +48,22 @@ describe('hardware lifecycle', () => {
     expect(created.body.lifecycleState).toBe('In Stock');
     expect(created.body.lifecycleChangedAt).toBeTruthy();
     expect(created.body.condition).toBe('');
-    const deployed = await officer.post('/api/hardware').send({ id: 'HW-L-002', assetName: 'Desktop', lifecycleState: 'Deployed' }).expect(201);
+    // Starting Deployed with nobody named records a shared device; it still gets an open check-out.
+    const shared = await officer.post('/api/hardware').send({ id: 'HW-L-005', assetName: 'Switch', lifecycleState: 'Deployed' }).expect(201);
+    expect(shared.body).toMatchObject({ lifecycleState: 'Deployed', assigneeId: null, assignee: '' });
+    const sharedRows = await officer.get('/api/hardware/HW-L-005/assignments').expect(200);
+    expect(sharedRows.body).toMatchObject([{ staffId: null, assignee: '', open: true }]);
+    const deployed = await officer.post('/api/hardware').send({ id: 'HW-L-002', assetName: 'Desktop', lifecycleState: 'Deployed', assigneeId: person('Jane') }).expect(201);
     expect(deployed.body.lifecycleState).toBe('Deployed');
+    expect(deployed.body.assignee).toBe('Jane');
+    await officer.post('/api/hardware').send({ id: 'HW-L-004', assetName: 'Y', assigneeId: person('Jane') }).expect(400);
     await officer.post('/api/hardware').send({ id: 'HW-L-003', assetName: 'X', lifecycleState: 'Disposed' }).expect(400);
   });
 
   it('allows valid moves and rejects the rest with the allowed options', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane' }).expect(201);
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane') }).expect(201);
     expect(out.body.lifecycleState).toBe('Deployed');
     await move(officer, 'In Repair').expect(200);
     const same = await move(officer, 'In Repair').expect(409);
@@ -103,7 +118,7 @@ describe('hardware lifecycle', () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
     await officer.post('/api/hardware').send({ id: 'HW-OTHER', assetName: 'Other' }).expect(201);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane') }).expect(201);
     await move(officer, 'Retired', 'Cracked screen').expect(200);
     const auditor = await agentFor('Auditor');
     const history = await auditor.get(`/api/hardware/${ID}/history`).expect(200);
@@ -121,11 +136,11 @@ describe('check-out / check-in', () => {
   it('checks an asset out, and rejects a second check-out until it is checked in', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe', dueBack: '2026-12-01', notes: 'For fieldwork' }).expect(201);
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe'), dueBack: '2026-12-01', notes: 'For fieldwork' }).expect(201);
     expect(out.body.lifecycleState).toBe('Deployed');
     expect(out.body.assignee).toBe('Jane Doe');
 
-    const again = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Someone Else' }).expect(409);
+    const again = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Someone Else') }).expect(409);
     expect(again.body.error).toMatch(/Cannot check out an asset that is Deployed/);
 
     await officer.post(`/api/hardware/${ID}/checkout`).send({}).expect(400);
@@ -138,14 +153,15 @@ describe('check-out / check-in', () => {
   it('checks an asset back in, returning it to In Stock and clearing the assignee', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(201);
 
     const noOpen = await officer.post('/api/hardware/HW-NOPE/checkin').send({}).expect(404);
     expect(noOpen.body.error).toMatch(/not found/);
 
     const back = await officer.post(`/api/hardware/${ID}/checkin`).send({ notes: 'Returned in good condition' }).expect(200);
     expect(back.body.lifecycleState).toBe('In Stock');
-    expect(back.body.assignee).toBe('Unassigned');
+    expect(back.body.assignee).toBe('');
+    expect(back.body.assigneeId).toBeNull();
 
     const again = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(409);
     expect(again.body.error).toMatch(/Cannot check in an asset that is In Stock/);
@@ -159,57 +175,71 @@ describe('check-out / check-in', () => {
   it('checking in an asset sent for repair keeps it In Repair but releases the assignee', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(201);
     await move(officer, 'In Repair').expect(200);
 
     const back = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(200);
     expect(back.body.lifecycleState).toBe('In Repair');
-    expect(back.body.assignee).toBe('Unassigned');
+    expect(back.body.assignee).toBe('');
+    expect(back.body.assigneeId).toBeNull();
   });
 
   it('cannot check out an asset that is Deployed, Retired or Disposed', async () => {
     const officer = await agentFor('IT Officer');
     const manager = await agentFor('Manager');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
-    const deployed = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(201);
+    const deployed = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Bob') }).expect(409);
     expect(deployed.body.error).toMatch(/Cannot check out an asset that is Deployed/);
 
     await move(officer, 'Retired', 'Old').expect(200);
-    const retired = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    const retired = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Bob') }).expect(409);
     expect(retired.body.error).toMatch(/Cannot check out an asset that is Retired/);
 
     await move(manager, 'Disposed', 'BoS 2026/14').expect(200);
-    const disposed = await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Bob' }).expect(409);
+    const disposed = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Bob') }).expect(409);
     expect(disposed.body.error).toMatch(/Cannot check out an asset that is Disposed/);
   });
 
   it('a lifecycle move that returns an asset to stock or retires it closes the open check-out', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(201);
     await move(officer, 'In Repair').expect(200);
     const back = await move(officer, 'In Stock').expect(200);
-    expect(back.body.assignee).toBe('Unassigned');
+    expect(back.body.assignee).toBe('');
+    expect(back.body.assigneeId).toBeNull();
 
     const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
     expect(assignments.body[0]).toMatchObject({ open: false });
     expect(assignments.body[0].notes).toMatch(/Closed by a move to In Stock/);
   });
 
+  it('deploys a shared device with no individual assignee, and checks it back in', async () => {
+    const officer = await agentFor('IT Officer');
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Core switch' }).expect(201);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({}).expect(400); // the choice must be explicit
+    const out = await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: null }).expect(201);
+    expect(out.body).toMatchObject({ lifecycleState: 'Deployed', assigneeId: null, assignee: '' });
+    const back = await officer.post(`/api/hardware/${ID}/checkin`).send({}).expect(200);
+    expect(back.body.lifecycleState).toBe('In Stock');
+    const history = await officer.get(`/api/hardware/${ID}/history`).expect(200);
+    expect(history.body.map((e: { details: string }) => e.details).join(' ')).toMatch(/deployed as a shared device.*checked in \(shared device\)/);
+  });
+
   it('Auditor and Manager cannot check an asset out or in', async () => {
     const officer = await agentFor('IT Officer');
     await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop' }).expect(201);
     const auditor = await agentFor('Auditor');
-    await auditor.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(403);
-    await officer.post(`/api/hardware/${ID}/checkout`).send({ assignee: 'Jane Doe' }).expect(201);
+    await auditor.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(403);
+    await officer.post(`/api/hardware/${ID}/checkout`).send({ staffId: person('Jane Doe') }).expect(201);
     const manager = await agentFor('Manager');
     await manager.post(`/api/hardware/${ID}/checkin`).send({}).expect(403);
   });
 
   it('a new asset created already Deployed opens an assignment too', async () => {
     const officer = await agentFor('IT Officer');
-    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop', lifecycleState: 'Deployed', assignee: 'Jane Doe' }).expect(201);
+    await officer.post('/api/hardware').send({ id: ID, assetName: 'Laptop', lifecycleState: 'Deployed', assigneeId: person('Jane Doe') }).expect(201);
     const assignments = await officer.get(`/api/hardware/${ID}/assignments`).expect(200);
     expect(assignments.body).toMatchObject([{ assignee: 'Jane Doe', open: true }]);
   });
@@ -315,7 +345,11 @@ describe('legacy status mapping', () => {
       const insert = sqlite.prepare('INSERT INTO hardware (id, asset_name, lifecycle_state, assigned_to) VALUES (?, ?, ?, ?)');
       for (const [id, state, user] of rows) insert.run(id, 'Asset', state, user);
 
-      migrate(legacy, { migrationsFolder: src });
+      // Apply 0003 only (0004 adds more open rows for assets In Repair).
+      const upTo3 = journal.entries.slice(0, 4);
+      fs.copyFileSync(path.join(src, `${upTo3[3].tag}.sql`), path.join(tmp, `${upTo3[3].tag}.sql`));
+      fs.writeFileSync(path.join(tmp, 'meta', '_journal.json'), JSON.stringify({ ...journal, entries: upTo3 }));
+      migrate(legacy, { migrationsFolder: tmp });
       const assignments = sqlite.prepare('SELECT hardware_id AS id, assignee, checked_out_by AS by, checked_in_at AS closed FROM asset_assignments ORDER BY hardware_id').all();
       expect(assignments).toEqual([{ id: 'HW-1', assignee: 'Jane Doe', by: 'system', closed: null }]);
       const note = sqlite.prepare("SELECT details FROM audit_log WHERE action = 'Migrate Assignments'").get() as { details: string };

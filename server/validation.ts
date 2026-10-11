@@ -6,6 +6,8 @@ const text = (max = 200) => z.string().trim().max(max);
 const count = z.coerce.number().int().min(0).max(1_000_000);
 const money = z.coerce.number().min(0).max(1e13);
 const isoDate = z.union([z.literal(''), z.iso.date()]);
+/** A directory record id (department, location, staff); null clears the reference. */
+const refId = z.number().int().positive().nullable();
 
 export const idSchema = z
   .string()
@@ -18,7 +20,7 @@ export const HARDWARE_CATEGORIES = ['Laptop', 'Desktop', 'Switch', 'Router', 'Se
 export const SOFTWARE_CATEGORIES = ['Operating System', 'GIS', 'Office', 'Engineering', 'Database', 'Security'] as const;
 export const COMPONENT_CATEGORIES = ['RAM', 'Storage', 'CPU', 'Power Supply', 'NIC'] as const;
 
-// Accepts the field names the existing UI sends (`name`/`assignee` are legacy aliases).
+// Accepts the field names the existing UI sends (`name` is a legacy alias). The assignee is set by check-out only.
 export const hardwareFields = z.object({
   assetName: text().min(1),
   name: text().min(1),
@@ -30,10 +32,8 @@ export const hardwareFields = z.object({
   ram: text(50),
   hardDisk: text(50),
   condition: text(100),
-  department: text(),
-  location: text(),
-  user: text(),
-  assignee: text(),
+  departmentId: refId,
+  locationId: refId,
   yearOfPurchase: z.union([z.literal(''), z.string().regex(/^(19|20)\d{2}$/, 'Year must be four digits')]),
   dateAcquired: isoDate,
   cost: money,
@@ -49,7 +49,8 @@ export const hardwareFields = z.object({
 }).partial();
 
 // The lifecycle state is set on create only; later changes go through hardwareLifecycle.
-export const hardwareCreate = hardwareFields.extend({ id: idSchema, lifecycleState: z.enum(INITIAL_STATES).optional() });
+// An assignee is accepted only for an asset that starts Deployed (it opens its first check-out).
+export const hardwareCreate = hardwareFields.extend({ id: idSchema, lifecycleState: z.enum(INITIAL_STATES).optional(), assigneeId: refId.optional() });
 
 export const hardwareLifecycle = z.object({
   to: z.enum(LIFECYCLE_STATES),
@@ -57,7 +58,8 @@ export const hardwareLifecycle = z.object({
 });
 
 export const hardwareCheckout = z.object({
-  assignee: text(200).min(1, 'Assignee is required'),
+  // null deploys a shared device (switch, shared printer) with no individual assignee. It must be sent explicitly.
+  staffId: z.number({ error: 'Pick a staff member, or deploy it as shared' }).int().positive().nullable(),
   dueBack: isoDate.optional().default(''),
   notes: text(500).optional().default(''),
 });
@@ -69,7 +71,7 @@ export const hardwareCheckin = z.object({
 export const softwareFields = z.object({
   name: text().min(1),
   category: z.enum(SOFTWARE_CATEGORIES),
-  department: text(),
+  departmentId: refId,
   licenseKey: text(500),
   seatCapacity: count,
   activeSeats: count,
@@ -94,6 +96,23 @@ export const componentFields = z.object({
 
 export const componentCreate = componentFields.partial({ serialNumber: true, status: true, quantity: true, reorderLevel: true }).extend({ id: idSchema });
 export const componentUpdate = componentFields.partial();
+
+const recordName = text(100).min(1, 'Name is required');
+
+/** Merging a duplicate directory record into the one that is kept. */
+export const mergeInput = z.object({ intoId: z.number({ error: 'Pick the record to keep' }).int().positive() });
+
+export const departmentInput = z.object({ name: recordName });
+
+export const locationInput = z.object({ name: recordName, parentId: refId.optional().default(null) });
+export const locationUpdate = z.object({ name: recordName, parentId: refId }).partial();
+
+export const staffInput = z.object({
+  fullName: text(200).min(1, 'Full name is required'),
+  staffNumber: text(50).optional().default(''),
+  departmentId: refId.optional().default(null),
+});
+export const staffUpdate = z.object({ fullName: text(200).min(1, 'Full name is required'), staffNumber: text(50), departmentId: refId }).partial();
 
 /** Parses a request body; on failure sends a 400 and returns null. */
 export function parseBody<T extends z.ZodType>(schema: T, body: unknown, res: Response): z.infer<T> | null {

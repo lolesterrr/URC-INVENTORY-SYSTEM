@@ -83,7 +83,7 @@ export default function HelpGuide() {
               <li>Click the barcode icon on any hardware asset row to view its **IT Asset Passport**.</li>
               <li>Open the **Barcode Scan Center** from the primary sidebar to trigger simulated scans.</li>
               <li>Select a Mock Asset ID from the dropdown list and click **Scan Barcode** to decode.</li>
-              <li>The system instantly retrieves live dispatch logs, allowing you to update the lifecycle state, assignee, or station office in 1 click!</li>
+              <li>The system instantly retrieves live dispatch logs, so you can check it out or in, update its lifecycle state, or correct its location in one click.</li>
             </ol>
           </div>
 

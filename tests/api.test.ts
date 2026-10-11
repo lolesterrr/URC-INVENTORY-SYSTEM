@@ -22,7 +22,7 @@ async function agentFor(role: Role, username = role.toLowerCase().replace(' ', '
   return agent;
 }
 
-const asset = { id: 'HW-T-001', assetName: 'Desktop Computer', model: 'EliteDesk', serialNumber: 'SN1', lifecycleState: 'Deployed', condition: 'OK' };
+const asset = { id: 'HW-T-001', assetName: 'Desktop Computer', model: 'EliteDesk', serialNumber: 'SN1', lifecycleState: 'In Stock', condition: 'OK' };
 
 describe('authentication', () => {
   it('rejects API access without a session', async () => {

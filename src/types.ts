@@ -19,6 +19,7 @@ export type Permission =
   | 'assets:write'
   | 'assets:delete'
   | 'assets:dispose'
+  | 'directory:manage'
   | 'alerts:manage'
   | 'audit:read'
   | 'users:manage'
@@ -66,10 +67,17 @@ export const canEditInventory = (role: UserRole) => role === UserRole.ADMIN || r
 
 export interface HardwareAsset {
   id: string;
-  user: string;
   assetName: string;
   yearOfPurchase: string;
+  /** Directory references, with their display names from the server ('' when not set). */
+  departmentId: number | null;
+  department: string;
+  locationId: number | null;
+  /** Full path, e.g. "Central / Kampala / HQ". */
   location: string;
+  /** Set by check-out only; sent on create for an asset that starts Deployed. */
+  assigneeId: number | null;
+  assignee: string;
   model: string;
   serialNumber: string;
   engravedNumber: string;
@@ -80,7 +88,6 @@ export interface HardwareAsset {
   lifecycleChangedAt?: string | null;
   /** Free-text condition note, e.g. "Faulty". */
   condition: string;
-  department?: string;
   // Category-specific unique fields
   ipAddress?: string;
   portCount?: string;
@@ -91,7 +98,6 @@ export interface HardwareAsset {
   printTechnology?: string;
   // Additional helpful compatibility fields
   name?: string;
-  assignee?: string;
   category?: 'Laptop' | 'Desktop' | 'Switch' | 'Router' | 'Server' | 'Printer' | 'Other';
   cost?: number;
   stockLevel?: number;
@@ -103,7 +109,8 @@ export interface SoftwareLicense {
   id: string;
   name: string;
   category: 'Operating System' | 'GIS' | 'Office' | 'Engineering' | 'Database' | 'Security';
-  department?: string;
+  departmentId: number | null;
+  department: string;
   licenseKey: string;
   seatCapacity: number;
   activeSeats: number;
@@ -113,18 +120,43 @@ export interface SoftwareLicense {
   status: string;
 }
 
-export const URC_DEPARTMENTS = [
-  "MD's Office",
-  'HR OFFICE',
-  'PLANNING OFFICE',
-  'LEGAL OFFICE',
-  'HEALTH & SAFETY',
-  'AUDIT DEPARTMENT',
-  'PROCUREMENT',
-  'FINANCE DEPARTMENT',
-  'INFORMATION COMMUNICATION AND TECHNOLOGY',
-  'OPERATIONS DEPARTMENT',
-] as const;
+/** Directory records (GET /api/departments, /api/locations, /api/staff). Archived ones stay listed and flagged. */
+export interface Department {
+  id: number;
+  name: string;
+  archived: boolean;
+  assetCount: number;
+  staffCount: number;
+}
+
+export interface LocationRecord {
+  id: number;
+  name: string;
+  parentId: number | null;
+  /** Full path from the top, e.g. "Central / Kampala / HQ". */
+  path: string;
+  archived: boolean;
+  assetCount: number;
+}
+
+export interface StaffMember {
+  id: number;
+  fullName: string;
+  staffNumber: string;
+  departmentId: number | null;
+  department: string;
+  archived: boolean;
+  /** Assets this person holds now. */
+  assetCount: number;
+}
+
+export interface Directory {
+  departments: Department[];
+  locations: LocationRecord[];
+  staff: StaffMember[];
+}
+
+export type DirectoryKind = 'departments' | 'locations' | 'staff';
 
 export interface ServerComponent {
   id: string;
@@ -154,6 +186,8 @@ export interface Alert {
 export interface AssetAssignment {
   id: number;
   hardwareId: string;
+  staffId: number | null;
+  /** The name at check-out time. */
   assignee: string;
   checkedOutAt: string;
   checkedOutBy: string;

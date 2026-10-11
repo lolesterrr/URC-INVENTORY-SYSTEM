@@ -20,12 +20,12 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Software licences and seat tracking | ✅ | ✅ | ✅ | ✅ | ◐ (licences, no seat allocation) | Should |
 | Servers and components | ◐ | ✅ | ✅ | ✅ | ✅ | — |
 | Accessories and consumables (toner, mice, cables) with stock levels | ✅ | ✅ | ❌ | ✅ | ❌ | Later |
-| **Check-out / check-in** to staff with history | ✅ | ✅ | ◐ | ✅ | ❌ (free-text "user" field) | **Must** |
-| Full asset history timeline (who had it, repairs, moves) | ✅ | ✅ | ✅ | ✅ | ◐ (per-asset History from the audit log; check-out still to come) | **Must** |
+| **Check-out / check-in** to staff with history | ✅ | ✅ | ◐ | ✅ | ✅ (2026-10-05; staff records 2026-10-09) | **Must** |
+| Full asset history timeline (who had it, repairs, moves) | ✅ | ✅ | ✅ | ✅ | ✅ (per-asset History from the audit log, including check-out/check-in) | **Must** |
 | Lifecycle states (in stock → deployed → in repair → retired → disposed) | ✅ | ✅ | ✅ | ✅ | ✅ (2026-09-29) | **Must** |
 | Custom fields per category | ✅ | ✅ | ✅ | ✅ | ❌ | Later |
-| Hierarchical locations (Region → Station → Office) | ✅ | ✅ | ✅ | ✅ | ◐ (flat text) | **Must** |
-| Departments and staff as real records, not text | ✅ | ✅ | ✅ (via AD) | ✅ | ❌ | **Must** |
+| Hierarchical locations (Region → Station → Office) | ✅ | ✅ | ✅ | ✅ | ✅ (2026-10-09, any depth) | **Must** |
+| Departments and staff as real records, not text | ✅ | ✅ | ✅ (via AD) | ✅ | ✅ (2026-10-09) | **Must** |
 | File attachments (invoices, delivery notes, photos) | ✅ | ✅ | ✅ | ✅ | ❌ | Should |
 | Bulk edit, bulk check-out | ✅ | ✅ | ◐ | ✅ | ❌ | Should |
 
