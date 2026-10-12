@@ -89,8 +89,26 @@ Line-by-line route review and the git-history secret check are still pending (T2
   1. **Lifecycle states** (T9a) ✅
   2. **Check-out / check-in with per-asset history** (T9b) ✅
   3. **Departments, staff and locations as real records** (T9c) ✅
-  4. Purchase and warranty fields with in-app expiry alerts
+  4. **Purchase and warranty fields with in-app expiry alerts** (T9d) ← in progress
   5. Then CSV import/export, QR labels and standard reports, in an order to agree later.
+- [ ] T9d Purchase and warranty fields with in-app alerts. Plan (2026-10-12). `docs/FEATURE_COMPARISON.md` §B marks "Purchase date, cost, order number, LPO reference" and "Warranty expiry tracking and alerts" as **Must (v1)**.
+  - **Decisions taken with the user (2026-10-12):**
+    - **One mixed-precision purchase date.** `purchase_date` holds `''`, `YYYY` or `YYYY-MM-DD`. The legacy years survive unchanged, no day is ever invented, and there is only one field to fill in. The alternative (an exact date plus a year fallback) was rejected because two overlapping fields can disagree.
+    - **Purchase fields need `assets:write`** (Admin, IT Officer), like every other asset field. No new permission: the Manager keeps view, export and disposal approval, as in §4a.
+    - **The warranty warning window is configurable**, `WARRANTY_WARNING_DAYS`, default **90** days — longer than the 30 days used for licences, because replacing or extending cover goes through URC procurement.
+  - **What the legacy data actually holds** (checked first, counts only): all 82 assets have a four-digit `yearOfPurchase` and **no** `dateAcquired` and **no** `cost` at all. Those two columns only ever held values this app invented.
+  - **Schema + migration 0005** (hand-written `--custom`, snapshot regenerated from the schema):
+    - Add `purchase_date`, `purchase_cost` (REAL, **nullable** — NULL means unknown, so it is no longer confused with free), `order_number` (the LPO / order reference), `supplier`, `warranty_expires` and `warranty_notes`.
+    - `year_of_purchase` → `purchase_date` verbatim, then dropped.
+    - `cost` → `purchase_cost`, turning `0` into NULL.
+    - `date_acquired` is **dropped without migrating**: no form ever sent it, nothing ever displayed it, and `POST /api/hardware` stamped every new asset with the current date. That is an invented value, which CLAUDE.md forbids, so it is removed rather than carried forward.
+    - The alerts `type` enum gains `warranty_expiry` (a table rebuild, since SQLite CHECK constraints cannot be altered).
+    - One audit entry records the conversion.
+  - **Rules** go in `shared/purchase.ts` (dependency-free, used by the server and bundled into the UI): partial-date validation and `warrantyStatus()` → `none` / `ok` / `expiring` / `expired` with the day count. The server and the table badge then agree by construction.
+  - **Alerts:** `runAlertChecks` gains a `warranty_expiry` check per asset. Retired and Disposed assets are skipped — cover on an asset out of service is not news. Expired and about-to-expire produce different wording. The window comes from the config, so the alert text can state it. Email delivery stays out of scope (Q11 has no SMTP).
+  - **Display:** `columns.tsx` gains Purchased, Warranty, Cost, LPO and Supplier columns, so the CSV export carries them too; `HardwareForm` gains a "Purchase & warranty" block. Unknown values stay empty (`—`); a cost of nothing is never shown as `0`.
+  - **Dashboard:** `/api/analytics` reports `totalHardwareValue` as `null` when no asset has a cost, plus `costedHardwareCount`, so the tile stops claiming "UGX 0" for a register nobody has priced yet.
+  - **Not in this task:** depreciation and book value, a suppliers directory (`supplier` stays free text), maintenance contracts (all "Later"/"Should" in §B), and email delivery.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
