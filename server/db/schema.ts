@@ -99,9 +99,16 @@ export const hardware = sqliteTable(
     locationId: integer('location_id').references(() => locations.id),
     /** Set only by check-out/check-in (or creating an asset already Deployed). */
     assigneeId: integer('assignee_id').references(() => staff.id),
-    yearOfPurchase: text('year_of_purchase').notNull().default(''),
-    dateAcquired: text('date_acquired').notNull().default(''),
-    cost: real('cost').notNull().default(0),
+    /** '' when unknown, a year ('2019') when the old register only recorded one, or an exact date. */
+    purchaseDate: text('purchase_date').notNull().default(''),
+    /** NULL when the price is not known. 0 would claim the asset was free. */
+    purchaseCost: real('purchase_cost'),
+    /** URC local purchase order (LPO) or other order reference. */
+    orderNumber: text('order_number').notNull().default(''),
+    supplier: text('supplier').notNull().default(''),
+    /** Exact date cover ends, or '' when none is on record. A year is not enough to alert on. */
+    warrantyExpires: text('warranty_expires').notNull().default(''),
+    warrantyNotes: text('warranty_notes').notNull().default(''),
     stockLevel: integer('stock_level').notNull().default(1),
     reorderLevel: integer('reorder_level').notNull().default(0),
     ipAddress: text('ip_address').notNull().default(''),
@@ -179,7 +186,7 @@ export const alerts = sqliteTable(
   'alerts',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    type: text('type', { enum: ['low_stock', 'license_expiry', 'maintenance'] }).notNull(),
+    type: text('type', { enum: ['low_stock', 'license_expiry', 'maintenance', 'warranty_expiry'] }).notNull(),
     title: text('title').notNull(),
     message: text('message').notNull(),
     itemType: text('item_type', { enum: ['hardware', 'software', 'server'] }).notNull(),

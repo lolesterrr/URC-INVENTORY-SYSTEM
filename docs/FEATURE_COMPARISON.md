@@ -33,8 +33,8 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Feature | Snipe-IT | GLPI | Lansweeper | ManageEngine | **URC today** | Priority |
 |---|---|---|---|---|---|---|
 | Suppliers and manufacturers directory | ✅ | ✅ | ◐ | ✅ | ❌ | Should |
-| Purchase date, cost, order number, LPO reference | ✅ | ✅ | ◐ | ✅ | ◐ (year of purchase only) | **Must** |
-| **Warranty expiry tracking and alerts** | ✅ | ✅ | ✅ | ✅ | ❌ | **Must** |
+| Purchase date, cost, order number, LPO reference | ✅ | ✅ | ◐ | ✅ | ✅ (T9d; a date may be just a year) | **Must** |
+| **Warranty expiry tracking and alerts** | ✅ | ✅ | ✅ | ✅ | ✅ (T9d; in-app, window configurable) | **Must** |
 | Depreciation (straight-line) and book value | ✅ | ✅ | ❌ | ✅ | ❌ | Later |
 | Contracts (maintenance and support agreements) | ◐ | ✅ | ◐ | ✅ | ❌ | Later |
 | Disposal and write-off records (board-of-survey) | ◐ | ✅ | ❌ | ✅ | ❌ | Should (Manager approves) |

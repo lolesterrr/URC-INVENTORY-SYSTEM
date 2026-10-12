@@ -1,11 +1,16 @@
 import type { Response } from 'express';
 import { z } from 'zod';
 import { INITIAL_STATES, LIFECYCLE_STATES } from '../shared/lifecycle';
+import { isPurchaseDate } from '../shared/purchase';
 
 const text = (max = 200) => z.string().trim().max(max);
 const count = z.coerce.number().int().min(0).max(1_000_000);
 const money = z.coerce.number().min(0).max(1e13);
 const isoDate = z.union([z.literal(''), z.iso.date()]);
+/** Either a year ('2019', all the old register kept) or an exact date. Never a day invented from a year. */
+const purchaseDate = z.string().trim().refine(isPurchaseDate, 'Use a year (e.g. 2019) or an exact date (e.g. 2019-03-14)');
+/** A price that may be unknown: '' and null are stored as NULL, so "unknown" is never saved as 0. */
+const optionalMoney = z.union([z.literal(''), z.null(), money]).transform(v => (typeof v === 'number' ? v : null));
 /** A directory record id (department, location, staff); null clears the reference. */
 const refId = z.number().int().positive().nullable();
 
@@ -34,9 +39,12 @@ export const hardwareFields = z.object({
   condition: text(100),
   departmentId: refId,
   locationId: refId,
-  yearOfPurchase: z.union([z.literal(''), z.string().regex(/^(19|20)\d{2}$/, 'Year must be four digits')]),
-  dateAcquired: isoDate,
-  cost: money,
+  purchaseDate,
+  purchaseCost: optionalMoney,
+  orderNumber: text(100),
+  supplier: text(),
+  warrantyExpires: isoDate,
+  warrantyNotes: text(500),
   stockLevel: count,
   reorderLevel: count,
   ipAddress: text(45),

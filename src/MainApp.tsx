@@ -121,6 +121,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             onAddServerComponent={actions.addServerComponent}
             onUpdateServerComponent={actions.updateServerComponent}
             onDeleteServerComponent={actions.deleteServerComponent}
+            warrantyWarningDays={data.stats?.warrantyWarningDays}
             selectedSubTab={inventoryTab}
             setSelectedSubTab={setInventoryTab}
           />

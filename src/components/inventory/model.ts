@@ -58,7 +58,8 @@ export function filterHardware(list: HardwareAsset[], f: Filters, group: Hardwar
       matchesChoice(f.department, h.department) &&
       matchesText(f.search, [
         h.id, assetName(h), assignee(h), h.condition, h.serialNumber, h.engravedNumber, h.model, h.location, h.operatingSystem,
-        h.ipAddress, h.firmwareVersion, h.serverRole, h.ram, h.hardDisk, h.department, h.yearOfPurchase,
+        h.ipAddress, h.firmwareVersion, h.serverRole, h.ram, h.hardDisk, h.department,
+        h.purchaseDate, h.orderNumber, h.supplier,
       ]),
   );
 }

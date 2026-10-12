@@ -120,8 +120,8 @@ describe('role permissions', () => {
 describe('validation and audit', () => {
   it('rejects invalid input with field errors', async () => {
     const agent = await agentFor('IT Officer');
-    const res = await agent.post('/api/hardware').send({ id: 'bad id!', cost: -5 }).expect(400);
-    expect(res.body.fields.map((f: { field: string }) => f.field)).toEqual(expect.arrayContaining(['id', 'cost']));
+    const res = await agent.post('/api/hardware').send({ id: 'bad id!', purchaseCost: -5 }).expect(400);
+    expect(res.body.fields.map((f: { field: string }) => f.field)).toEqual(expect.arrayContaining(['id', 'purchaseCost']));
   });
 
   it('records the real signed-in user with before/after values', async () => {

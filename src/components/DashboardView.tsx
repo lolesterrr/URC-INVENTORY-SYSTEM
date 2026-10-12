@@ -144,7 +144,14 @@ export default function DashboardView({
                 {stats ? stats.totalHardwareCount : '—'} <span className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider">Assets</span>
               </h3>
               <p className="text-[11px] text-slate-500 mt-2">
-                Valuation: <span className="text-slate-950 font-mono font-bold">UGX {stats && stats.totalHardwareValue != null ? Number(stats.totalHardwareValue || 0).toLocaleString() : '0'}</span>
+                {stats && stats.totalHardwareValue != null ? (
+                  <>
+                    Valuation: <span className="text-slate-950 font-mono font-bold">UGX {stats.totalHardwareValue.toLocaleString()}</span>
+                    <span className="text-slate-400"> (from {stats.costedHardwareCount} of {stats.totalHardwareCount} assets)</span>
+                  </>
+                ) : (
+                  <span className="text-slate-400">No purchase costs recorded yet</span>
+                )}
               </p>
             </div>
           </div>

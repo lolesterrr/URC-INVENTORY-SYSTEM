@@ -69,8 +69,13 @@ export function importLegacy(db: DB, data: Record<string, unknown>) {
     // unless the file already has them.
     const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
     const lifecycle = legacyStatusToLifecycle(str(r.status), str(r.user) || str(r.assignee));
+    // The legacy register only recorded a purchase year, which carries over as the purchase date as it
+    // stands. No day is invented from it. A legacy `cost` is deliberately NOT imported: the old form
+    // pre-filled made-up costs, so those figures mean nothing (see T8).
+    const purchased = r.purchaseDate ?? r.yearOfPurchase;
     return {
       ...r,
+      purchaseDate: purchased === undefined || purchased === null ? '' : String(purchased).trim(),
       lifecycleState: r.lifecycleState ?? lifecycle.lifecycleState,
       condition: str(r.condition) || lifecycle.condition,
       category: cat && (HARDWARE_CATEGORIES as readonly string[]).includes(cat) ? cat : undefined,

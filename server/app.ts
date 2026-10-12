@@ -13,11 +13,14 @@ import { analyticsRouter, auditLogsRouter } from './routes/reports';
 import { backupsRouter } from './routes/backups';
 import { departmentsRouter, locationsRouter, staffRouter } from './routes/directory';
 import type { BackupService } from './services/backup';
+import { DEFAULT_WARRANTY_WARNING_DAYS } from '../shared/purchase';
 
 export interface AppOptions extends SessionOptions {
   production: boolean;
   loginRateLimit?: number;
   backups?: BackupService;
+  /** Days before a warranty ends that it is reported (WARRANTY_WARNING_DAYS). */
+  warrantyWarningDays?: number;
 }
 
 /** Builds the Express app with all API routes. Static/Vite serving is added by the caller. */
@@ -54,18 +57,21 @@ export function createApp(db: DB, opts: AppOptions) {
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   app.use('/api/auth', authRouter(db, opts));
 
+  // One window for the alert scan and for the figure the UI colours its warranty badges by.
+  const warrantyWarningDays = opts.warrantyWarningDays ?? DEFAULT_WARRANTY_WARNING_DAYS;
+
   const api = express.Router();
   api.use(requireAuth);
   api.use('/users', usersRouter(db));
-  api.use('/hardware', hardwareRouter(db));
+  api.use('/hardware', hardwareRouter(db, warrantyWarningDays));
   api.use('/software', softwareRouter(db));
   api.use('/server-components', serverComponentsRouter(db));
   api.use('/departments', departmentsRouter(db));
   api.use('/locations', locationsRouter(db));
   api.use('/staff', staffRouter(db));
-  api.use('/alerts', alertsRouter(db));
+  api.use('/alerts', alertsRouter(db, warrantyWarningDays));
   api.use('/audit-logs', auditLogsRouter(db));
-  api.use('/analytics', analyticsRouter(db));
+  api.use('/analytics', analyticsRouter(db, warrantyWarningDays));
   if (opts.backups) api.use('/backups', backupsRouter(opts.backups));
   app.use('/api', api);
 

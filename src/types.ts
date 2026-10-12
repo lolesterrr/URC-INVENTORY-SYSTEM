@@ -68,7 +68,16 @@ export const canEditInventory = (role: UserRole) => role === UserRole.ADMIN || r
 export interface HardwareAsset {
   id: string;
   assetName: string;
-  yearOfPurchase: string;
+  /** '' when unknown, a year ('2019') when that is all the old register kept, or an exact date. */
+  purchaseDate: string;
+  /** null when the price is not known; never 0 to mean "unknown". */
+  purchaseCost: number | null;
+  /** URC local purchase order (LPO) or other order reference. */
+  orderNumber: string;
+  supplier: string;
+  /** Exact date cover ends, or '' when none is on record. */
+  warrantyExpires: string;
+  warrantyNotes: string;
   /** Directory references, with their display names from the server ('' when not set). */
   departmentId: number | null;
   department: string;
@@ -99,10 +108,8 @@ export interface HardwareAsset {
   // Additional helpful compatibility fields
   name?: string;
   category?: 'Laptop' | 'Desktop' | 'Switch' | 'Router' | 'Server' | 'Printer' | 'Other';
-  cost?: number;
   stockLevel?: number;
   reorderLevel?: number;
-  dateAcquired?: string;
 }
 
 export interface SoftwareLicense {
@@ -171,7 +178,7 @@ export interface ServerComponent {
 
 export interface Alert {
   id: string;
-  type: 'low_stock' | 'license_expiry' | 'maintenance';
+  type: 'low_stock' | 'license_expiry' | 'maintenance' | 'warranty_expiry';
   title: string;
   message: string;
   timestamp: string;
@@ -213,10 +220,16 @@ export interface AuditLog {
 
 export interface DashboardStats {
   totalHardwareCount: number;
-  totalHardwareValue: number;
+  /** Sum of the purchase costs actually recorded, or null when no asset has one. */
+  totalHardwareValue: number | null;
+  /** How many assets that sum covers, so the figure is never read as the whole register. */
+  costedHardwareCount: number;
   totalActiveLicenses: number;
   totalLicenseCost: number;
   totalServerComponents: number;
   lowStockAlertCount: number;
   expiringLicensesCount: number;
+  expiringWarrantiesCount: number;
+  /** Days before a warranty ends that the server reports it (WARRANTY_WARNING_DAYS). */
+  warrantyWarningDays: number;
 }

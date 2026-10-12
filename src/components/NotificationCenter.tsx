@@ -7,6 +7,14 @@ import React, { useState } from 'react';
 import { Mail, Check, BellRing, RefreshCw, AlertTriangle, Clock, Calendar, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { Alert, UserRole, canEditInventory } from '../types';
 
+/** How each alert type is labelled and coloured in the list. */
+const ALERT_STYLES: Record<Alert['type'], { label: string; row: string; chip: string }> = {
+  license_expiry: { label: 'License Expiry', row: 'bg-red-50/40 border-red-200 hover:bg-red-50', chip: 'bg-red-200 text-red-950' },
+  warranty_expiry: { label: 'Warranty Expiry', row: 'bg-red-50/40 border-red-200 hover:bg-red-50', chip: 'bg-red-200 text-red-950' },
+  maintenance: { label: 'Faulty Hardware', row: 'bg-amber-50/30 border-amber-200 hover:bg-amber-50', chip: 'bg-amber-200 text-amber-955' },
+  low_stock: { label: 'Low Stock', row: 'bg-orange-50/30 border-orange-200 hover:bg-orange-50', chip: 'bg-orange-200 text-orange-955' },
+};
+
 interface NotificationCenterProps {
   alerts: Alert[];
   onResolveAlert: (id: string) => Promise<void>;
@@ -75,26 +83,14 @@ export default function NotificationCenter({
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
             {activeAlerts.map(alert => (
-              <div 
-                key={alert.id} 
-                className={`p-3 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                  alert.type === 'license_expiry' 
-                    ? 'bg-red-50/40 border-red-200 hover:bg-red-50' 
-                    : alert.type === 'maintenance' 
-                      ? 'bg-amber-50/30 border-amber-200 hover:bg-amber-50'
-                      : 'bg-orange-50/30 border-orange-200 hover:bg-orange-50'
-                }`}
+              <div
+                key={alert.id}
+                className={`p-3 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${ALERT_STYLES[alert.type].row}`}
               >
                 <div className="space-y-1 max-w-lg">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
-                      alert.type === 'license_expiry' 
-                        ? 'bg-red-200 text-red-950' 
-                        : alert.type === 'maintenance'
-                          ? 'bg-amber-200 text-amber-955'
-                          : 'bg-orange-200 text-orange-955'
-                    }`}>
-                      {alert.type === 'low_stock' ? 'Low Stock' : alert.type === 'license_expiry' ? 'License Expiry' : 'Faulty Hardware'}
+                    <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.2 rounded ${ALERT_STYLES[alert.type].chip}`}>
+                      {ALERT_STYLES[alert.type].label}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
                       <Clock className="h-3 w-3" />

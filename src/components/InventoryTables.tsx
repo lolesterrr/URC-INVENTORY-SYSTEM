@@ -42,6 +42,8 @@ interface InventoryTablesProps {
   onAddServerComponent: (item: ServerComponent) => Promise<void>;
   onUpdateServerComponent: (item: ServerComponent) => Promise<void>;
   onDeleteServerComponent: (id: string) => Promise<void>;
+  /** Days before a warranty ends that the server reports it; colours the Warranty column. */
+  warrantyWarningDays?: number;
   selectedSubTab: InventoryTab;
   setSelectedSubTab: (tab: InventoryTab) => void;
 }
@@ -71,7 +73,7 @@ function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
 }
 
 export default function InventoryTables(props: InventoryTablesProps) {
-  const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, selectedSubTab: tab } = props;
+  const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, warrantyWarningDays, selectedSubTab: tab } = props;
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [group, setGroup] = useState<HardwareGroup>('All');
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -93,7 +95,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
   };
 
   const exportCsv = () => {
-    if (tab === 'hardware') downloadCsv(`URC_Hardware_${group}_Register.csv`, hardwareColumns(group), shownHardware);
+    if (tab === 'hardware') downloadCsv(`URC_Hardware_${group}_Register.csv`, hardwareColumns(group, warrantyWarningDays), shownHardware);
     else if (tab === 'software') downloadCsv('URC_Software_Licences.csv', softwareColumns, shownSoftware);
     else downloadCsv('URC_Server_Spares.csv', componentColumns, shownComponents);
   };
@@ -203,7 +205,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
               ))}
             </div>
             <DataTable
-              columns={hardwareColumns(group)}
+              columns={hardwareColumns(group, warrantyWarningDays)}
               rows={shownHardware}
               minWidth={1000}
               emptyText="No hardware matches the current filters."
