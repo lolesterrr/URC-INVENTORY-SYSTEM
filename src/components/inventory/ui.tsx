@@ -37,11 +37,16 @@ export function DataTable<T extends { id: string | number }>({
         <tbody className="divide-y divide-slate-150 text-[11px] text-slate-600 font-semibold">
           {rows.map(row => (
             <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-              {columns.map(c => (
-                <td key={c.header} className={`px-3 py-2 ${c.className ?? 'whitespace-nowrap'}`}>
-                  {c.render ? c.render(row) : c.value(row) || <span className="text-slate-300">—</span>}
-                </td>
-              ))}
+              {columns.map(c => {
+                // A render with nothing to show (an empty field) falls back to the same dash as a plain value,
+                // so an unknown cost or warranty date never looks like a recorded one.
+                const cell = c.render ? c.render(row) : c.value(row);
+                return (
+                  <td key={c.header} className={`px-3 py-2 ${c.className ?? 'whitespace-nowrap'}`}>
+                    {cell || <span className="text-slate-300">—</span>}
+                  </td>
+                );
+              })}
               <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">{actions(row)}</td>
             </tr>
           ))}
