@@ -42,8 +42,8 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 ## C. Audit, labels and scanning
 | Feature | Snipe-IT | GLPI | Lansweeper | ManageEngine | **URC today** | Priority |
 |---|---|---|---|---|---|---|
-| Print asset labels with QR code or barcode | ✅ | ✅ | ❌ | ✅ | ◐ (scanner and print present, needs checking) | **Must** |
-| Scan to look up an asset | ✅ | ✅ | ❌ | ✅ | ✅ (BarcodeScanner) | — |
+| Print asset labels with QR code or barcode | ✅ | ✅ | ❌ | ✅ | ✅ (T9f; QR resolving to the asset, A4 sheets, decode-verified) | **Must** |
+| Scan to look up an asset | ✅ | ✅ | ❌ | ✅ | ◐ (a phone scans a T9f label natively; the Barcode Scan Center shows a camera but decodes nothing — it looks an asset up by typed ID) | **Must** (real decoding) |
 | **Physical audit mode** (scan items per location, report missing ones) | ✅ | ◐ | ❌ | ✅ | ❌ | Should |
 | Scheduled audit reminders ("not audited in 12 months") | ✅ | ◐ | ❌ | ◐ | ❌ | Later |
 | Tamper-proof activity log (who changed what, before and after values) | ✅ | ✅ | ✅ | ✅ | ◐ (log exists, identity is spoofable) | **Must** |

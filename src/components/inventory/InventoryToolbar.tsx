@@ -1,4 +1,4 @@
-import { Download, Plus, Printer, Search, Upload } from 'lucide-react';
+import { Download, Plus, Printer, QrCode, Search, Upload } from 'lucide-react';
 import { COMPONENT_CATEGORIES, HARDWARE_CATEGORIES, SOFTWARE_CATEGORIES, STATUSES, type Filters, type InventoryTab } from './model';
 
 const TABS: { id: InventoryTab; label: string }[] = [
@@ -26,6 +26,7 @@ export default function InventoryToolbar({
   canEdit,
   onExport,
   onImport,
+  onLabels,
   onAdd,
   departments,
 }: {
@@ -39,6 +40,8 @@ export default function InventoryToolbar({
   onExport: () => void;
   /** Opens the CSV import. Only the hardware register has one, so it is absent on the other tabs. */
   onImport?: () => void;
+  /** Opens the label sheet for the rows currently shown. Hardware only; reading data, so every role may. */
+  onLabels?: () => void;
   onAdd: () => void;
 }) {
   const set = (patch: Partial<Filters>) => onFiltersChange({ ...filters, ...patch });
@@ -73,6 +76,11 @@ export default function InventoryToolbar({
               className={`${toolButton} disabled:opacity-50`}
             >
               <Upload className="h-3.5 w-3.5 text-slate-400" /> CSV IMPORT
+            </button>
+          )}
+          {onLabels && (
+            <button onClick={onLabels} title="Print QR labels for the assets currently listed." className={toolButton}>
+              <QrCode className="h-3.5 w-3.5 text-slate-400" /> QR LABELS
             </button>
           )}
           <button onClick={() => window.print()} className={toolButton}>

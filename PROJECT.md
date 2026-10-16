@@ -73,6 +73,7 @@ Line-by-line route review and the git-history secret check are still pending (T2
 - **Q9** Who will be the permanent URC Admin after handover?
 - **Q10** Does the server have internet access? It is no longer required.
 - **Q11** Where are the email/SMTP settings for alerts? This only matters for a later feature.
+- **Q12** What label stock does URC IT print on — an A4 sticker sheet (and which layout, e.g. 24 or 65 per sheet) or a roll-fed label printer? Deferred on 2026-10-16: T9f ships an A4 grid with presets and custom millimetre sizes, so the answer is a setting rather than a rewrite. Confirm before ordering stickers.
 
 ## 6. Roadmap (phases)
 0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
@@ -91,12 +92,30 @@ Line-by-line route review and the git-history secret check are still pending (T2
   3. **Departments, staff and locations as real records** (T9c) ✅
   4. **Purchase and warranty fields with in-app expiry alerts** (T9d) ✅
   5. **CSV import** (T9e) ✅ — chosen by the user (2026-10-16) as the first of the three remaining features.
-  6. **Next:** QR labels and standard reports, in an order to agree with the user.
+  6. **QR labels** (T9f) ✅ — chosen by the user (2026-10-16).
+  7. **Next:** standard reports.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
 
 ### Completed
+- [x] T9f Printable QR asset labels (2026-10-16). §C of `docs/FEATURE_COMPARISON.md` marks "Print asset labels with QR code or barcode" **Must (v1)**.
+  - **The payload follows what comparable software does**, which the user asked for rather than choosing themselves. Checked against Snipe-IT's own documentation and general asset-tagging guidance: the 2D code resolves to the asset's record, a bare id suits sites with no connectivity, and **either way the human-readable id is printed on the label**, because scans fail and stickers get damaged.
+    - **The code holds the asset's URL**, `<base>/?asset=HW-001`. URC's server is on the same LAN as the technicians' phones, so a scan opens the record with no typing.
+    - **The base comes from `window.location.origin`, not a new setting** — a browser that reached the app already knows an address that works. It is shown and editable in the print dialog, so a DNS name can replace an IP, and **clearing it falls back to the bare asset id**. The dialog warns when the address is `localhost`, since a sheet printed from there would be useless to everyone else.
+    - **Every label also carries the asset id and name as text**, and the code uses **error-correction level H**: the payload is short, so the extra correction data costs nothing and a scuffed or partly covered sticker still scans.
+  - **The URL leads somewhere:** the app reads `?asset=<id>` on load, opens the hardware register filtered to that asset, and says so plainly when the id is not in the register (archived, or an out-of-date label). Without this the code would scan to a page that ignored it, which is exactly the kind of decorative value CLAUDE.md forbids.
+  - **What gets a label:** the register as currently filtered, the same rule `CSV EXPORT` follows, plus a single label from an asset's own pass when one sticker needs replacing.
+  - **The sheet** is an A4 grid positioned in millimetres by a print stylesheet (`@page size: A4; margin: 0`), so it does not depend on how a printer flows content. It is portalled onto `<body>` and the print rules hide everything else, so only the sheets reach the paper, one sheet per page. Label size is a preset (24, 40 or 65 per sheet) plus custom width and height, because **the stock URC IT prints on is still unknown (Q12)**; the default is 24 per sheet at 64 × 33.9 mm, which fits a code and two lines of text without crowding.
+  - **The fake barcode is gone.** `BarcodeDialog` drew stripes derived from the asset id: it looked scannable and decoded to nothing, so anyone who scanned it got nothing back. It is a real QR code now, holding what a printed label holds, with a "Print label" button beside it.
+  - **Permissions:** printing reads data and writes none, so it needs only `assets:read` and nothing is audited. An Auditor can print labels.
+  - **Library:** `qrcode-generator`, no dependencies of its own, ships its own types, bundled at build time — no CDN and no runtime cloud dependency, as the hard constraints require. Codes render as a single SVG path rather than a grid of rects, so a printer draws one filled shape with no hairline seams between modules.
+  - **Also corrected:** §C claimed "Scan to look up an asset ✅ (BarcodeScanner)". The Barcode Scan Center shows a camera feed but never decodes anything — the "scan" is a preset or a typed id — so that row is now ◐ with the truth. Phones scan the new codes natively, so this does not block the feature.
+  - **Not in this task:** a 1D barcode beside the QR (Snipe-IT prints one so a USB scanner can type the asset tag into a search box; worth doing once URC says whether they have such scanners), and making the Barcode Scan Center decode a camera image.
+  - **Verified:** `npm run lint` ✅ · `npm test` 113/113 ✅ (12 new in `tests/labels.test.ts`) · `npm run build` ✅ (the browser bundle has no server code) · `npx drizzle-kit generate` reports "No schema changes" ✅ (no migration).
+    - **Browser** (Chromium, production build, 13 steps, 29 checks): 30 assets give 2 sheets at 24 per sheet with 24 codes previewed; the localhost warning fires and names the payload; switching to 65-per-sheet re-lays them onto one page; a custom 80 × 50 mm label gives 10 per sheet; clearing the address switches to the bare id and drops the warning; the asset pass shows one real code with a working "Print label"; under print media the sheet is the only visible element on the page and measures 793.7 px, i.e. exactly 210 mm at 96 dpi; `?asset=HW-007` opens the register filtered to that one asset; `?asset=HW-999` reports the unknown id; and an Auditor can print. Console: only the expected pre-sign-in 401s.
+    - **Codes were decoded, not just rendered:** the generated SVG was rasterised in the browser and decoded with an independent QR decoder in Node. `http://10.0.0.5:3000` → `http://10.0.0.5:3000/?asset=HW-001`; a base with a sub-path → `http://urc-inventory.urc.go.ug/inventory/?asset=HW-001`; an empty base → `HW-001`. So the labels scan, and to exactly what the dialog promises.
+  - **Follow-ups:** the Barcode Scan Center still cannot decode a camera image; there is no 1D barcode for USB scanners; and the sheet cannot yet start at label N, so a part-used sticker sheet is wasted (worth adding once Q12 is answered and the real geometry is known).
 - [x] T9e CSV import for the hardware register (2026-10-16). `docs/FEATURE_COMPARISON.md` §F marks "CSV / Excel import with column mapping and validation" **Must (v1)**. The export was already column-driven; the gap was getting a spreadsheet *into* the register — above all the purchase and warranty details T9d added, which no legacy data holds.
   - **Decisions taken with the user (2026-10-16):**
     - **Rows are matched on `Asset ID`, and the import both updates and adds.** An ID already in the register is updated, a valid ID that is not is added, and a blank one is a rejected row. Asset ID is the primary key and the first column of every export, so export → edit in Excel → import round-trips. **Serial number is deliberately not a match key:** `serial_number` has no unique index, many are blank, and two assets sharing one would be ambiguous.

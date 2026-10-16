@@ -22,3 +22,39 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/*
+ * Printing. Two cases: the Print PDF button, which prints the page as it stands, and a sheet of asset
+ * labels, which must be the only thing on the paper and must be positioned in real millimetres.
+ */
+@media print {
+  /* A label sheet is portalled to the end of <body>, so hiding body's other children leaves only it. */
+  body.printing-labels > *:not(.label-sheet-root) {
+    display: none !important;
+  }
+  body.printing-labels {
+    background: #fff;
+  }
+  .label-sheet-root {
+    display: block !important;
+  }
+  /* Each sheet is one page. */
+  .label-sheet {
+    page-break-after: always;
+    break-after: page;
+  }
+  .label-sheet:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+/* On screen the sheet only shows inside the preview, never in the page flow. */
+.label-sheet-root {
+  display: none;
+}

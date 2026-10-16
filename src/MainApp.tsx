@@ -1,7 +1,7 @@
 /**
  * Signed-in shell: sidebar, top bar and the active screen. Data loading lives in useInventoryData.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { api } from './api';
 import type { User } from './types';
@@ -10,6 +10,7 @@ import Sidebar, { type AppTab } from './components/layout/Sidebar';
 import { StatusBar, TopBar } from './components/layout/TopBar';
 import DashboardView from './components/DashboardView';
 import InventoryTables from './components/InventoryTables';
+import { ASSET_QUERY_PARAM } from '../shared/labels';
 import type { InventoryTab } from './components/inventory/model';
 import BarcodeScanner from './components/BarcodeScanner';
 import DirectoryView from './components/directory/DirectoryView';
@@ -32,9 +33,24 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
   const [inventoryTab, setInventoryTab] = useState<InventoryTab>('hardware');
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Set once, from the address a scanned asset label opens.
+  const [scannedAssetId] = useState(() =>
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get(ASSET_QUERY_PARAM),
+  );
   const data = useInventoryData();
   const { actions } = data;
   const unreadAlerts = data.alerts.filter(a => a.status === 'unread').length;
+
+  // A scanned label opens the app at ?asset=<id>. Wait for the register to load before deciding whether
+  // that asset exists, so a slow load is not reported as a missing asset.
+  useEffect(() => {
+    if (!scannedAssetId || data.isLoading) return;
+    setActiveTab('inventory');
+    setInventoryTab('hardware');
+    if (!data.hardware.some(h => h.id === scannedAssetId)) {
+      setNotice(`No asset ${scannedAssetId} is in the register. It may have been archived, or the label may be out of date.`);
+    }
+  }, [scannedAssetId, data.isLoading, data.hardware]);
 
   const handleLogout = async () => {
     try {
@@ -126,6 +142,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             warrantyWarningDays={data.stats?.warrantyWarningDays}
             selectedSubTab={inventoryTab}
             setSelectedSubTab={setInventoryTab}
+            focusAssetId={scannedAssetId}
           />
         );
       case 'directory':
