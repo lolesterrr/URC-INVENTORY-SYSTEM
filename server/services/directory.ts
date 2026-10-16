@@ -27,7 +27,7 @@ export function locationPath(byId: Map<number, LocationRow>, id: number): string
   return names.join(PATH_SEPARATOR);
 }
 
-export function loadDirectory(db: DB): Directory {
+export function loadDirectory(db: Pick<DB, 'select'>): Directory {
   const deps = new Map(db.select({ id: departments.id, name: departments.name }).from(departments).all().map(d => [d.id, d.name]));
   const locs = new Map(db.select().from(locations).all().map(l => [l.id, l]));
   const people = new Map(db.select({ id: staff.id, name: staff.fullName }).from(staff).all().map(s => [s.id, s.name]));
@@ -51,7 +51,7 @@ export type DirectoryKind = keyof typeof TABLES;
  * an asset already has is always fine, even if that record has since been archived.
  * Returns an error message, or null when the reference is acceptable.
  */
-export function checkReference(db: DB, kind: DirectoryKind, id: number | null | undefined, current: number | null = null): string | null {
+export function checkReference(db: Pick<DB, 'select'>, kind: DirectoryKind, id: number | null | undefined, current: number | null = null): string | null {
   if (id === undefined || id === null || id === current) return null;
   const table = TABLES[kind];
   const row = db.select({ deletedAt: table.deletedAt }).from(table).where(eq(table.id, id)).get();

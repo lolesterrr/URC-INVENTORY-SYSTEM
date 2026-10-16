@@ -11,8 +11,11 @@ export interface AuditEntry {
   after?: unknown;
 }
 
-/** Records who did what. Identity always comes from the server-side session, never from the client. */
-export function recordAudit(db: DB, req: Request | null, entry: AuditEntry): void {
+/**
+ * Records who did what. Identity always comes from the server-side session, never from the client.
+ * Takes a transaction as readily as the database, so an audit entry is rolled back with the change it describes.
+ */
+export function recordAudit(db: Pick<DB, 'insert'>, req: Request | null, entry: AuditEntry): void {
   db.insert(auditLog)
     .values({
       userId: req?.user?.id ?? null,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HardwareAsset } from '../src/types';
-import { csvCell, EMPTY_FILTERS, filterHardware, nextId, toCsv } from '../src/components/inventory/model';
+import { csvCell, toCsv } from '../shared/csv';
+import { EMPTY_FILTERS, filterHardware, nextId } from '../src/components/inventory/model';
 import { hardwareColumns } from '../src/components/inventory/columns';
 import { changedFields } from '../src/components/inventory/HistoryDialog';
 

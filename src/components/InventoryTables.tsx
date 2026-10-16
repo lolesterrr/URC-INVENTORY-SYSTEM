@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import type { Directory, HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
+import { toCsv } from '../../shared/csv';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
@@ -13,7 +14,7 @@ import { HistoryDialog } from './inventory/HistoryDialog';
 import InventoryToolbar from './inventory/InventoryToolbar';
 import { LifecycleDialog } from './inventory/LifecycleDialog';
 import {
-  assetName, EMPTY_FILTERS, filterHardware, filterServerComponents, filterSoftware, HARDWARE_GROUPS, inGroup, nextId, toCsv,
+  assetName, EMPTY_FILTERS, filterHardware, filterServerComponents, filterSoftware, HARDWARE_GROUPS, inGroup, nextId,
   type Filters, type HardwareGroup, type InventoryTab,
 } from './inventory/model';
 import ServerComponentForm from './inventory/ServerComponentForm';

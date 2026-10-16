@@ -60,6 +60,16 @@ export const hardwareFields = z.object({
 // An assignee is accepted only for an asset that starts Deployed (it opens its first check-out).
 export const hardwareCreate = hardwareFields.extend({ id: idSchema, lifecycleState: z.enum(INITIAL_STATES).optional(), assigneeId: refId.optional() });
 
+/**
+ * A CSV bulk update of the register. The file arrives as text and is parsed on the server, so the rules that
+ * decide what may be written are the server's own. `dryRun` asks for the preview.
+ */
+export const hardwareImport = z.object({
+  csv: z.string().min(1, 'Choose a CSV file to import.').max(5_000_000, 'That file is too large to import at once; split it up.'),
+  dryRun: z.boolean(),
+  createMissingDirectory: z.boolean().optional().default(false),
+});
+
 export const hardwareLifecycle = z.object({
   to: z.enum(LIFECYCLE_STATES),
   note: text(500).optional().default(''),
