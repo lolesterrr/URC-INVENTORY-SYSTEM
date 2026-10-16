@@ -73,6 +73,7 @@ Line-by-line route review and the git-history secret check are still pending (T2
 - **Q9** Who will be the permanent URC Admin after handover?
 - **Q10** Does the server have internet access? It is no longer required.
 - **Q11** Where are the email/SMTP settings for alerts? This only matters for a later feature.
+- **Q12** What label stock does URC IT print on — an A4 sticker sheet (and which layout, e.g. 24 or 65 per sheet) or a roll-fed label printer? Deferred on 2026-10-16: T9f ships an A4 grid with presets and custom millimetre sizes, so the answer is a setting rather than a rewrite. Confirm before ordering stickers.
 
 ## 6. Roadmap (phases)
 0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
@@ -91,7 +92,20 @@ Line-by-line route review and the git-history secret check are still pending (T2
   3. **Departments, staff and locations as real records** (T9c) ✅
   4. **Purchase and warranty fields with in-app expiry alerts** (T9d) ✅
   5. **CSV import** (T9e) ✅ — chosen by the user (2026-10-16) as the first of the three remaining features.
-  6. **Next:** QR labels and standard reports, in an order to agree with the user.
+  6. **QR labels** (T9f) — chosen by the user (2026-10-16); standard reports follow.
+- [ ] T9f Printable QR asset labels. Plan agreed with the user (2026-10-16):
+  - **The payload follows what this kind of software already does**, which the user asked for rather than picking themselves. Checked against Snipe-IT's own docs and general asset-tagging guidance: a label's 2D code resolves to the asset's record, a bare id suits sites with no connectivity, and **either way the human-readable id is printed on the label**, because scans fail and stickers get damaged.
+    - **The code holds the asset's URL**, `<base>/?asset=HW-001`. URC's server is on the LAN the technicians' phones are on, so a scan opens the record with no typing.
+    - **The base comes from `window.location.origin`**, not a new setting: a browser that reached the app already knows an address that works. It is shown and editable in the print dialog before printing, so a DNS name can be used instead of an IP, and **clearing it falls back to the bare asset id**. The dialog warns when the origin is `localhost`, since a label printed from there would be useless to everyone else.
+    - **Every label also carries the asset id and name in text**, and uses **error-correction level H** — the payload is tiny, so the capacity costs nothing and a scuffed or partly covered sticker still scans.
+  - **The URL has to lead somewhere**, so the app reads `?asset=<id>` on load and opens that asset. Without it the code would scan to a page that ignores it, which is the kind of decorative value CLAUDE.md forbids.
+  - **What gets a label:** the register as currently filtered, the same rule `CSV EXPORT` already follows, plus a single label for one asset from its row action when a sticker needs replacing.
+  - **The sheet** is an A4 grid built with a print stylesheet (`@page size: A4; margin: 0`) and positions in millimetres, so it is printer-independent. The label size is a preset plus custom width/height, because **the stock URC IT prints on is not known yet (Q12)**; the default is a 24-per-sheet 64 × 33.9 mm layout, which comfortably fits a code plus two lines of text. When the real stock is known it is a preset, not a rewrite.
+  - **The fake barcode goes.** `BarcodeDialog` draws stripes derived from the asset id that look scannable and decode to nothing; it becomes a real QR code. A graphic that invites a scan it cannot satisfy is an invented value.
+  - **Permissions:** printing a label reads data and writes none, so it needs `assets:read` and no new permission. Nothing is audited, because nothing changes.
+  - **Library:** `qrcode-generator`, which has no dependencies of its own and ships its own types, bundled at build time — no CDN and no runtime cloud dependency. The code is rendered as one SVG path rather than a grid of rects, so it prints crisply at any size.
+  - **Not in this task:** a 1D barcode alongside the QR (Snipe-IT prints one so a USB scanner can type the asset tag into a search box — worth doing once URC says whether they have such scanners), and making the Barcode Scan Center actually decode a camera image, which it does not do today.
+  7. **Next:** standard reports.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
