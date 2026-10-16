@@ -1,4 +1,4 @@
-import { Download, Plus, Printer, Search } from 'lucide-react';
+import { Download, Plus, Printer, Search, Upload } from 'lucide-react';
 import { COMPONENT_CATEGORIES, HARDWARE_CATEGORIES, SOFTWARE_CATEGORIES, STATUSES, type Filters, type InventoryTab } from './model';
 
 const TABS: { id: InventoryTab; label: string }[] = [
@@ -25,6 +25,7 @@ export default function InventoryToolbar({
   onFiltersChange,
   canEdit,
   onExport,
+  onImport,
   onAdd,
   departments,
 }: {
@@ -36,6 +37,8 @@ export default function InventoryToolbar({
   onFiltersChange: (filters: Filters) => void;
   canEdit: boolean;
   onExport: () => void;
+  /** Opens the CSV import. Only the hardware register has one, so it is absent on the other tabs. */
+  onImport?: () => void;
   onAdd: () => void;
 }) {
   const set = (patch: Partial<Filters>) => onFiltersChange({ ...filters, ...patch });
@@ -62,6 +65,16 @@ export default function InventoryToolbar({
           <button onClick={onExport} className={toolButton}>
             <Download className="h-3.5 w-3.5 text-slate-400" /> CSV EXPORT
           </button>
+          {onImport && (
+            <button
+              onClick={onImport}
+              disabled={!canEdit}
+              title={canEdit ? 'Bulk update the register from a spreadsheet.' : 'Your role cannot change records.'}
+              className={`${toolButton} disabled:opacity-50`}
+            >
+              <Upload className="h-3.5 w-3.5 text-slate-400" /> CSV IMPORT
+            </button>
+          )}
           <button onClick={() => window.print()} className={toolButton}>
             <Printer className="h-3.5 w-3.5 text-slate-400" /> PRINT PDF
           </button>

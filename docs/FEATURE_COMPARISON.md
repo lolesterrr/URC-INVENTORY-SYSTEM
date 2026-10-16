@@ -27,7 +27,7 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Hierarchical locations (Region → Station → Office) | ✅ | ✅ | ✅ | ✅ | ✅ (2026-10-09, any depth) | **Must** |
 | Departments and staff as real records, not text | ✅ | ✅ | ✅ (via AD) | ✅ | ✅ (2026-10-09) | **Must** |
 | File attachments (invoices, delivery notes, photos) | ✅ | ✅ | ✅ | ✅ | ❌ | Should |
-| Bulk edit, bulk check-out | ✅ | ✅ | ◐ | ✅ | ❌ | Should |
+| Bulk edit, bulk check-out | ✅ | ✅ | ◐ | ✅ | ◐ (T9e CSV import edits fields in bulk; no bulk check-out, which needs a person per asset) | Should |
 
 ## B. Procurement and finance
 | Feature | Snipe-IT | GLPI | Lansweeper | ManageEngine | **URC today** | Priority |
@@ -71,7 +71,7 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Feature | Snipe-IT | GLPI | Lansweeper | ManageEngine | **URC today** | Priority |
 |---|---|---|---|---|---|---|
 | Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | — |
-| CSV / Excel import with column mapping and validation | ✅ | ✅ | ✅ | ✅ | ◐ (one-off audit import) | **Must** |
+| CSV / Excel import with column mapping and validation | ✅ | ✅ | ✅ | ✅ | ✅ (T9e; matched on Asset ID, with a dry-run preview) | **Must** |
 | CSV / Excel / PDF export and custom reports | ✅ | ✅ | ✅ | ✅ | ◐ (CSV and print) | **Must** |
 | Standard reports: by department, by age, due for replacement, licence compliance | ✅ | ✅ | ✅ | ✅ | ◐ | **Must** (department, age, replacement planning) |
 | Email notifications through the internal SMTP / Exchange server (warranty, licence expiry, overdue check-ins) | ✅ | ✅ | ✅ | ✅ | ◐ (UI only, verify) | Should (in-app alerts are a Must) |

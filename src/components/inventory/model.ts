@@ -1,4 +1,7 @@
-/** Pure helpers for the inventory registers: grouping, filtering, CSV and ID suggestions. No React here. */
+/**
+ * Pure helpers for the inventory registers: grouping, filtering and ID suggestions. No React here.
+ * Reading and writing CSV itself lives in `shared/csv.ts`, shared with the server-side import.
+ */
 import type { HardwareAsset, ServerComponent, SoftwareLicense } from '../../types';
 import { LIFECYCLE_STATES } from '../../../shared/lifecycle';
 
@@ -88,14 +91,4 @@ export function nextId(prefix: string, ids: string[]): string {
   const re = new RegExp(`^${prefix}(\\d+)$`);
   const max = ids.reduce((m, id) => Math.max(m, Number(re.exec(id)?.[1] ?? 0)), 0);
   return `${prefix}${String(max + 1).padStart(3, '0')}`;
-}
-
-/** Quotes a CSV cell and neutralises values a spreadsheet would run as a formula. */
-export function csvCell(value: string): string {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-  return `"${safe.replace(/"/g, '""')}"`;
-}
-
-export function toCsv(headers: string[], rows: string[][]): string {
-  return [headers.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\r\n');
 }

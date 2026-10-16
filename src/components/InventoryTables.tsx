@@ -3,17 +3,19 @@
  * Building blocks live in ./inventory/.
  */
 import { useState } from 'react';
-import type { Directory, HardwareAsset, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
+import type { Directory, HardwareAsset, ImportResult, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
+import { toCsv } from '../../shared/csv';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
 import type { FormContext } from './inventory/FormModal';
 import HardwareForm from './inventory/HardwareForm';
 import { HistoryDialog } from './inventory/HistoryDialog';
+import { ImportDialog } from './inventory/ImportDialog';
 import InventoryToolbar from './inventory/InventoryToolbar';
 import { LifecycleDialog } from './inventory/LifecycleDialog';
 import {
-  assetName, EMPTY_FILTERS, filterHardware, filterServerComponents, filterSoftware, HARDWARE_GROUPS, inGroup, nextId, toCsv,
+  assetName, EMPTY_FILTERS, filterHardware, filterServerComponents, filterSoftware, HARDWARE_GROUPS, inGroup, nextId,
   type Filters, type HardwareGroup, type InventoryTab,
 } from './inventory/model';
 import ServerComponentForm from './inventory/ServerComponentForm';
@@ -36,6 +38,9 @@ interface InventoryTablesProps {
   onCheckinHardware: (id: string, notes: string) => Promise<void>;
   /** Adds a staff record from a picker (needs directory:manage). */
   onAddStaff: (fullName: string) => Promise<StaffMember>;
+  /** Reports what a CSV file would do, without changing anything. */
+  onPreviewImport: (csv: string, createMissingDirectory: boolean) => Promise<ImportResult>;
+  onImportHardware: (csv: string, createMissingDirectory: boolean) => Promise<ImportResult>;
   onAddSoftware: (item: SoftwareLicense) => Promise<void>;
   onUpdateSoftware: (item: SoftwareLicense) => Promise<void>;
   onDeleteSoftware: (id: string) => Promise<void>;
@@ -54,6 +59,7 @@ type Dialog =
   | { kind: 'servers'; item: ServerComponent | null }
   | { kind: 'archive'; target: ArchiveTarget; run: () => Promise<void> }
   | { kind: 'barcode'; id: string }
+  | { kind: 'import' }
   | { kind: 'lifecycle'; item: HardwareAsset }
   | { kind: 'history'; id: string; name: string }
   | { kind: 'checkout'; item: HardwareAsset }
@@ -144,6 +150,8 @@ export default function InventoryTables(props: InventoryTablesProps) {
         return <ArchiveDialog target={dialog.target} onConfirm={dialog.run} onClose={close} />;
       case 'barcode':
         return <BarcodeDialog id={dialog.id} onClose={close} />;
+      case 'import':
+        return <ImportDialog onPreview={props.onPreviewImport} onImport={props.onImportHardware} onClose={close} />;
       case 'lifecycle':
         return (
           <LifecycleDialog
@@ -180,6 +188,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
         onFiltersChange={setFilters}
         canEdit={canEdit}
         onExport={exportCsv}
+        onImport={tab === 'hardware' ? () => setDialog({ kind: 'import' }) : undefined}
         onAdd={openNew}
         departments={directory.departments.map(d => d.name)}
       />

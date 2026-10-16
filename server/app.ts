@@ -50,6 +50,9 @@ export function createApp(db: DB, opts: AppOptions) {
       strictTransportSecurity: opts.secureCookie,
     }),
   );
+  // A CSV bulk update carries a whole spreadsheet, so it gets a larger allowance than the rest of the API.
+  // Registered first: the parser that runs leaves the body parsed, and the general one below then skips it.
+  app.use('/api/hardware/import', express.json({ limit: '6mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(sessionMiddleware(db, opts));

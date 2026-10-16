@@ -36,6 +36,9 @@ React 19 + Vite + Tailwind (`src/`). Express 5 + TypeScript (`server/`). `shared
 - A migration that needs data changes: `npx drizzle-kit generate --custom --name <name>`, write the SQL, then regenerate that migration's snapshot from the schema, because `--custom` copies the previous one. `npx drizzle-kit generate` must then report "No schema changes".
 - The frontend calls the API through `src/api.ts` only (data loading and saving: `src/hooks/useInventoryData.ts`).
 - Inventory tables are column-driven: add or change a column in `src/components/inventory/columns.tsx` and it appears in both the table and the CSV export.
+- Reading and writing CSV lives in `shared/csv.ts`, used by the export and by the import, so the two cannot drift. A renamed export header also needs `server/services/hardwareImportColumns.ts`, or the import stops recognising that column.
+- Bulk changes from a spreadsheet go through `POST /api/hardware/import`. It never sets a field that has its own endpoint (`lifecycleState`, the assignee), and `dryRun` runs the whole import in a transaction and rolls it back, so a preview is always exactly what a commit would do.
+- `server/services/*` never imports from `server/routes/*`; shared helpers belong in the service (see `server/services/hardware.ts`).
 - Purchase dates are mixed precision: `purchase_date` holds a year (`2019`) or an exact date (`2019-03-14`), because the old register only recorded years. Rules in `shared/purchase.ts`. An unknown purchase cost is `NULL`, never `0`.
 - Never display or save invented placeholder values (fake IPs, serials, "N/A") for empty fields. Leave them empty; the UI shows `—`. This includes a column with its own `render`: return nothing and `DataTable` supplies the dash.
 

@@ -233,3 +233,36 @@ export interface DashboardStats {
   /** Days before a warranty ends that the server reports it (WARRANTY_WARNING_DAYS). */
   warrantyWarningDays: number;
 }
+
+/** One row of a CSV import, as `POST /api/hardware/import` reports it. */
+export interface ImportRow {
+  /** Position among the data rows, 1-based. The header is not counted and blank lines are ignored. */
+  row: number;
+  id: string;
+  status: 'create' | 'update' | 'unchanged' | 'rejected';
+  /** Why the row was rejected. */
+  error?: string;
+  /** Headers whose values this row changes. */
+  changed?: string[];
+}
+
+/** The preview (`dryRun`) and the outcome of a CSV import share this shape. */
+export interface ImportResult {
+  dryRun: boolean;
+  rowsRead: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  rejected: number;
+  /** Headers the import does not recognise. Reported, never fatal. */
+  unknownColumns: string[];
+  /** Headers read and deliberately left alone, with the reason. */
+  ignoredColumns: { header: string; reason: string }[];
+  missingDepartments: string[];
+  missingLocations: string[];
+  /** True when records are missing and permission to create them was not given, so those rows were rejected. */
+  needsDirectoryConsent: boolean;
+  createdDepartments: string[];
+  createdLocations: string[];
+  rows: ImportRow[];
+}

@@ -7,39 +7,24 @@ import { can } from '../auth/permissions';
 import { requirePermission } from '../auth/session';
 import { recordAudit } from '../services/audit';
 import { runAlertChecks } from '../services/alerts';
+import { detectCategory, hardwareSnapshot } from '../services/hardware';
+import { importHardwareCsv, ImportError } from '../services/hardwareImport';
 import { checkReference, loadDirectory, type Directory } from '../services/directory';
 import { canTransition, LIFECYCLE_TRANSITIONS, NOTE_REQUIRED } from '../../shared/lifecycle';
-import { HARDWARE_CATEGORIES, hardwareCheckin, hardwareCheckout, hardwareCreate, hardwareFields, hardwareLifecycle, parseBody } from '../validation';
+import { hardwareCheckin, hardwareCheckout, hardwareCreate, hardwareFields, hardwareImport, hardwareLifecycle, parseBody } from '../validation';
 import { auditToApi } from './reports';
 
 type Row = typeof hardware.$inferSelect;
 type AssignmentRow = typeof assetAssignments.$inferSelect;
-type Category = (typeof HARDWARE_CATEGORIES)[number];
-
-/** The row plus display names for its department, location (full path) and assignee. Also what the audit log stores. */
-function withNames(r: Row, dir: Directory) {
-  return { ...r, department: dir.department(r.departmentId), location: dir.location(r.locationId), assignee: dir.staff(r.assigneeId) };
-}
 
 /** API shape expected by the UI (includes the legacy `name` alias). */
 export function hardwareToApi(r: Row, dir: Directory) {
-  const { deletedAt: _deleted, ...rest } = withNames(r, dir);
+  const { deletedAt: _deleted, ...rest } = hardwareSnapshot(r, dir);
   return { ...rest, name: r.assetName };
 }
 
 export function assignmentToApi(r: AssignmentRow) {
   return { ...r, open: r.checkedInAt === null };
-}
-
-export function detectCategory(name: string, model: string): Category {
-  const t = `${name} ${model}`.toLowerCase();
-  if (/switch|catalyst/.test(t)) return 'Switch';
-  if (/router|unifi|gateway|access point/.test(t)) return 'Router';
-  if (/server|poweredge|proliant/.test(t)) return 'Server';
-  if (/printer|laserjet|inkjet|epson/.test(t)) return 'Printer';
-  if (/laptop|latitude|thinkpad|macbook|notebook/.test(t)) return 'Laptop';
-  if (/desktop|thinkcentre|optiplex|workstation|elitedesk/.test(t)) return 'Desktop';
-  return 'Other';
 }
 
 /** Maps validated input (with UI aliases) to table columns, dropping undefined fields. */
@@ -60,7 +45,7 @@ export function hardwareRouter(db: DB, warrantyWarningDays?: number) {
   const openAssignment = (hardwareId: string) =>
     db.select().from(assetAssignments).where(and(eq(assetAssignments.hardwareId, hardwareId), isNull(assetAssignments.checkedInAt))).get();
   const toApi = (r: Row) => hardwareToApi(r, loadDirectory(db));
-  const snapshot = (r: Row) => withNames(r, loadDirectory(db));
+  const snapshot = (r: Row) => hardwareSnapshot(r, loadDirectory(db));
   /** Rejects a department or location that does not exist or was archived (keeping the current one is fine). */
   const badReference = (res: Response, cols: Partial<Row>, current?: Row) => {
     for (const [field, kind] of [['departmentId', 'department'], ['locationId', 'location']] as const) {
@@ -118,6 +103,28 @@ export function hardwareRouter(db: DB, warrantyWarningDays?: number) {
     });
     checkAlerts();
     res.status(201).json(toApi(created));
+  });
+
+  /**
+   * Bulk update from a CSV file. `dryRun` returns the preview; the same code then applies it, so what the
+   * preview reports is what a commit does. Declared before the `/:id` routes so the path cannot be read as an id.
+   */
+  router.post('/import', requirePermission('assets:write'), (req, res) => {
+    const body = parseBody(hardwareImport, req.body, res);
+    if (!body) return;
+    // Creating directory records is a directory change, so it needs the permission that governs them.
+    if (body.createMissingDirectory && !can(req.user!.role, 'directory:manage')) {
+      return res.status(403).json({ error: 'Your role cannot create departments or locations. Import without that option, or ask an Admin to add them first.' });
+    }
+    try {
+      const result = importHardwareCsv(db, req, body);
+      // Warranty dates are the main thing an import brings in, so look for new alerts straight away.
+      if (!result.dryRun && (result.created || result.updated)) checkAlerts();
+      res.json(result);
+    } catch (err) {
+      if (err instanceof ImportError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
   });
 
   router.put('/:id', requirePermission('assets:write'), (req, res) => {

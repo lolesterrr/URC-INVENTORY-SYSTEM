@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { loadConfig } from '../server/config';
 import { openDatabase, type DB } from '../server/db';
 import { assetAssignments, hardware, LIFECYCLE_STATES, serverComponents, software } from '../server/db/schema';
-import { detectCategory } from '../server/routes/hardware';
+import { detectCategory } from '../server/services/hardware';
 import { recordAudit } from '../server/services/audit';
 import { runAlertChecks } from '../server/services/alerts';
 import { legacyStatusToLifecycle } from '../server/services/lifecycle';
