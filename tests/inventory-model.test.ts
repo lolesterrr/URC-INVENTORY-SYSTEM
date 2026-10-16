@@ -5,9 +5,14 @@ import { hardwareColumns } from '../src/components/inventory/columns';
 import { changedFields } from '../src/components/inventory/HistoryDialog';
 
 const asset = (id: string, extra: Partial<HardwareAsset> = {}): HardwareAsset => ({
-  id, assetName: `Asset ${id}`, yearOfPurchase: '', departmentId: null, department: '', locationId: null, location: '', assigneeId: null, assignee: '', model: '', serialNumber: '', engravedNumber: '',
-  operatingSystem: '', ram: '', hardDisk: '', lifecycleState: 'Deployed', condition: '', category: 'Laptop', ...extra,
+  id, assetName: `Asset ${id}`, departmentId: null, department: '', locationId: null, location: '', assigneeId: null, assignee: '', model: '', serialNumber: '', engravedNumber: '',
+  operatingSystem: '', ram: '', hardDisk: '', lifecycleState: 'Deployed', condition: '', category: 'Laptop',
+  purchaseDate: '', purchaseCost: null, orderNumber: '', supplier: '', warrantyExpires: '', warrantyNotes: '', ...extra,
 });
+
+/** The value a register/CSV column holds for one asset, by column header. */
+const cells = (group: Parameters<typeof hardwareColumns>[0], h: HardwareAsset, warningDays?: number) =>
+  Object.fromEntries(hardwareColumns(group, warningDays).map(c => [c.header, c.value(h)]));
 
 describe('inventory model', () => {
   it('suggests the next ID in sequence', () => {
@@ -51,6 +56,37 @@ describe('inventory model', () => {
       const values = Object.fromEntries(cols.map(c => [c.header, c.value(list[1])]));
       expect(values).toMatchObject({ State: 'In Repair', Condition: 'Cracked screen' });
     }
+  });
+
+  it('exports the purchase block in every register, and leaves unknown values empty', () => {
+    const unknown = asset('HW-5');
+    const known = asset('HW-6', {
+      purchaseDate: '2019-03-14', purchaseCost: 4_500_000, orderNumber: 'URC/LPO/2019/045',
+      supplier: 'Kampala Computer Centre', warrantyExpires: '2030-03-14',
+    });
+    for (const group of ['All', 'Laptop', 'Network', 'Server', 'Printer'] as const) {
+      // An asset nobody has priced exports blanks, never a 0 cost or a made-up date.
+      expect(cells(group, unknown)).toMatchObject({
+        Purchased: '', Warranty: '', 'Purchase Cost (UGX)': '', 'LPO / Order Ref.': '', Supplier: '',
+      });
+      expect(cells(group, known)).toMatchObject({
+        Purchased: '2019-03-14', Warranty: '2030-03-14', 'Purchase Cost (UGX)': '4500000',
+        'LPO / Order Ref.': 'URC/LPO/2019/045', Supplier: 'Kampala Computer Centre',
+      });
+    }
+    // A legacy asset knows only the year, and that is exactly what is exported.
+    expect(cells('All', asset('HW-7', { purchaseDate: '2019' })).Purchased).toBe('2019');
+    // The old Year column is gone, replaced by Purchased.
+    expect(hardwareColumns('All').map(c => c.header)).not.toContain('Year');
+  });
+
+  it('searches the purchase year, LPO reference and supplier', () => {
+    const list = [
+      asset('HW-1', { purchaseDate: '2019', orderNumber: 'URC/LPO/2019/045' }),
+      asset('HW-2', { supplier: 'Nalukolongo Suppliers Ltd' }),
+    ];
+    expect(filterHardware(list, { ...EMPTY_FILTERS, search: 'LPO/2019' }, 'All').map(h => h.id)).toEqual(['HW-1']);
+    expect(filterHardware(list, { ...EMPTY_FILTERS, search: 'nalukolongo' }, 'All').map(h => h.id)).toEqual(['HW-2']);
   });
 
   it('lists only the fields an edit changed, ignoring timestamps', () => {

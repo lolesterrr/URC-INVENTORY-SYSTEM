@@ -1,17 +1,47 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { DB } from '../db';
 import { alerts, hardware, serverComponents, software } from '../db/schema';
+import { DEFAULT_WARRANTY_WARNING_DAYS, warrantyStatus, warrantyWhen } from '../../shared/purchase';
 
 type NewAlert = typeof alerts.$inferInsert;
 
 const DAY_MS = 86_400_000;
 export const LICENSE_EXPIRY_WARNING_DAYS = 30;
 
+export interface AlertCheckOptions {
+  now?: Date;
+  /** Days before a warranty ends that it is reported. Comes from WARRANTY_WARNING_DAYS. */
+  warrantyWarningDays?: number;
+}
+
 /** Scans inventory and inserts an unread alert for each new problem. Existing unread alerts are not duplicated. */
-export function runAlertChecks(db: DB, now: Date = new Date()): number {
+export function runAlertChecks(db: DB, options: AlertCheckOptions = {}): number {
+  const now = options.now ?? new Date();
+  const warrantyWarningDays = options.warrantyWarningDays ?? DEFAULT_WARRANTY_WARNING_DAYS;
   const found: NewAlert[] = [];
 
   for (const hw of db.select().from(hardware).where(isNull(hardware.deletedAt)).all()) {
+    // Cover on an asset that is out of service is not news, so only assets still in use are checked.
+    if (hw.lifecycleState !== 'Retired' && hw.lifecycleState !== 'Disposed') {
+      const warranty = warrantyStatus(hw.warrantyExpires, now, warrantyWarningDays);
+      if (warranty.state === 'expired') {
+        found.push({
+          type: 'warranty_expiry',
+          itemType: 'hardware',
+          itemId: hw.id,
+          title: `Warranty expired: ${hw.assetName}`,
+          message: `The warranty on ${hw.assetName} (${hw.id}) ended on ${hw.warrantyExpires}, ${warrantyWhen(warranty.days)}. Repairs are now chargeable.`,
+        });
+      } else if (warranty.state === 'expiring') {
+        found.push({
+          type: 'warranty_expiry',
+          itemType: 'hardware',
+          itemId: hw.id,
+          title: `Warranty ending: ${hw.assetName}`,
+          message: `The warranty on ${hw.assetName} (${hw.id}) ends on ${hw.warrantyExpires}, ${warrantyWhen(warranty.days)}. Plan an extension or a replacement.`,
+        });
+      }
+    }
     if (hw.reorderLevel > 0 && hw.stockLevel <= hw.reorderLevel) {
       found.push({
         type: 'low_stock',

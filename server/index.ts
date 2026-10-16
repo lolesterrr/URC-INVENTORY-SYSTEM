@@ -22,7 +22,7 @@ async function main() {
   const backups = new BackupService(db, config.backup);
   const sessionOpts = { idleMs: config.sessionIdleMs, maxMs: config.sessionMaxMs, secureCookie: Boolean(config.tls) };
 
-  const app = createApp(db, { ...sessionOpts, production, backups });
+  const app = createApp(db, { ...sessionOpts, production, backups, warrantyWarningDays: config.warrantyWarningDays });
 
   if (production) {
     const distPath = path.join(process.cwd(), 'dist');
@@ -34,8 +34,9 @@ async function main() {
     app.use(vite.middlewares);
   }
 
-  runAlertChecks(db);
-  setInterval(() => runAlertChecks(db), 6 * HOUR_MS).unref();
+  const alertOptions = { warrantyWarningDays: config.warrantyWarningDays };
+  runAlertChecks(db, alertOptions);
+  setInterval(() => runAlertChecks(db, alertOptions), 6 * HOUR_MS).unref();
   setInterval(() => purgeExpiredSessions(db, sessionOpts), HOUR_MS).unref();
   const stopBackups = backups.startSchedule();
 

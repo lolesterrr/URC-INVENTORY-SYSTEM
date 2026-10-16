@@ -24,7 +24,7 @@ const toApi = (a: Row) => ({
   resolvedAt: a.resolvedAt,
 });
 
-export function alertsRouter(db: DB) {
+export function alertsRouter(db: DB, warrantyWarningDays?: number) {
   const router = Router();
 
   router.get('/', requirePermission('assets:read'), (_req, res) => {
@@ -45,7 +45,7 @@ export function alertsRouter(db: DB) {
   });
 
   router.post('/check-triggers', requirePermission('alerts:manage'), (req, res) => {
-    const created = runAlertChecks(db);
+    const created = runAlertChecks(db, { warrantyWarningDays });
     recordAudit(db, req, { action: 'Alert Check', details: `Ran inventory checks manually; ${created} new alert(s).` });
     res.json({ success: true, created, message: `Inventory checked. ${created} new alert(s).` });
   });

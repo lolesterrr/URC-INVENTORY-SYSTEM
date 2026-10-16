@@ -2,6 +2,7 @@ import path from 'path';
 import 'dotenv/config';
 import { z } from 'zod';
 import type { BackupOptions } from './services/backup';
+import { DEFAULT_WARRANTY_WARNING_DAYS } from '../shared/purchase';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -19,6 +20,7 @@ const envSchema = z.object({
   BACKUP_KEEP_DAILY: z.coerce.number().int().min(1).max(366).default(7),
   BACKUP_KEEP_WEEKLY: z.coerce.number().int().min(0).max(520).default(4),
   BACKUP_KEEP_MONTHLY: z.coerce.number().int().min(0).max(1200).default(12),
+  WARRANTY_WARNING_DAYS: z.coerce.number().int().min(1).max(3650).default(DEFAULT_WARRANTY_WARNING_DAYS),
 });
 
 export type Config = {
@@ -31,6 +33,8 @@ export type Config = {
   sessionIdleMs: number;
   sessionMaxMs: number;
   backup: BackupOptions;
+  /** How many days before a warranty ends an alert is raised. */
+  warrantyWarningDays: number;
 };
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
@@ -58,5 +62,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
       hour: e.BACKUP_HOUR,
       retention: { daily: e.BACKUP_KEEP_DAILY, weekly: e.BACKUP_KEEP_WEEKLY, monthly: e.BACKUP_KEEP_MONTHLY },
     },
+    warrantyWarningDays: e.WARRANTY_WARNING_DAYS,
   };
 }

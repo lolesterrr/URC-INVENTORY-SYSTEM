@@ -1,5 +1,6 @@
 /** Column definitions shared by the on-screen tables and the CSV export. Empty values stay empty. */
 import type { HardwareAsset, LifecycleState, ServerComponent, SoftwareLicense } from '../../types';
+import { DEFAULT_WARRANTY_WARNING_DAYS, isYearOnly, warrantyStatus, warrantyWhen, type WarrantyState } from '../../../shared/purchase';
 import { assetName, assignee, type HardwareGroup } from './model';
 import { Badge, StatusBadge, type Column, type Tone } from './ui';
 
@@ -24,34 +25,79 @@ const hw = {
   text: (header: string, value: (h: HardwareAsset) => string | undefined): HwCol => ({ header, value: h => value(h) ?? '' }),
   state: { header: 'State', value: h => h.lifecycleState, render: h => <StatusBadge status={h.lifecycleState} tones={LIFECYCLE_TONES} /> },
   condition: { header: 'Condition', value: h => h.condition ?? '' },
+  // A purchase date may be just a year, which the register says plainly rather than implying a day.
+  purchased: {
+    header: 'Purchased',
+    value: h => h.purchaseDate ?? '',
+    className: 'font-mono text-slate-700 whitespace-nowrap',
+    render: h => (h.purchaseDate ? <>{h.purchaseDate}{isYearOnly(h.purchaseDate) && <span className="text-slate-400"> (year)</span>}</> : null),
+  },
+  // Blank when no cost is recorded. Showing 0 would claim the asset was free.
+  cost: {
+    header: 'Purchase Cost (UGX)',
+    value: h => (h.purchaseCost === null || h.purchaseCost === undefined ? '' : String(h.purchaseCost)),
+    className: 'font-mono text-slate-700 whitespace-nowrap',
+    render: h => (h.purchaseCost === null || h.purchaseCost === undefined ? null : `UGX ${h.purchaseCost.toLocaleString()}`),
+  },
+  order: { header: 'LPO / Order Ref.', value: h => h.orderNumber ?? '', className: 'font-mono text-slate-700 whitespace-nowrap' },
+  supplier: { header: 'Supplier', value: h => h.supplier ?? '' },
 } satisfies Record<string, HwCol | ((...args: never[]) => HwCol)>;
 
-export function hardwareColumns(group: HardwareGroup): HwCol[] {
+const WARRANTY_TONES: Record<Exclude<WarrantyState, 'none'>, Tone> = { ok: 'green', expiring: 'amber', expired: 'red' };
+
+/**
+ * Warranty end date, coloured by the same window the server raises alerts with, so the register and the
+ * Alert Center never disagree. Empty when nothing is on record.
+ */
+function warrantyColumn(warningDays: number): HwCol {
+  return {
+    header: 'Warranty',
+    value: h => h.warrantyExpires ?? '',
+    className: 'whitespace-nowrap',
+    render: h => {
+      const { state, days } = warrantyStatus(h.warrantyExpires ?? '', new Date(), warningDays);
+      if (state === 'none') return null;
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="font-mono text-slate-700">{h.warrantyExpires}</span>
+          <Badge tone={WARRANTY_TONES[state]}>{state === 'expired' ? `expired ${warrantyWhen(days)}` : warrantyWhen(days)}</Badge>
+        </span>
+      );
+    },
+  };
+}
+
+/**
+ * Columns for a register, in order. The same list builds the CSV export, so anything added here is
+ * exported too. The purchase block sits at the end, keeping the day-to-day fields leftmost.
+ */
+export function hardwareColumns(group: HardwareGroup, warrantyWarningDays: number = DEFAULT_WARRANTY_WARNING_DAYS): HwCol[] {
+  const purchase: HwCol[] = [hw.purchased, warrantyColumn(warrantyWarningDays), hw.cost, hw.order, hw.supplier];
   switch (group) {
     case 'Network':
       return [
         hw.id, hw.name('Device Name'), hw.department, hw.type, hw.model, hw.ip('Management IP'),
         hw.text('Port Capacity', h => h.portCount), hw.mono('Firmware / OS', h => h.firmwareVersion || h.operatingSystem),
-        hw.serial('Serial No.'), hw.location('Rack / Room Location'), hw.condition, hw.state,
+        hw.serial('Serial No.'), hw.location('Rack / Room Location'), hw.condition, hw.state, ...purchase,
       ];
     case 'Server':
       return [
         hw.id, hw.name('Server Name'), hw.department, hw.model, hw.text('Server Role', h => h.serverRole), hw.ip('IP Address'),
         hw.mono('CPU Cores', h => h.cpuCores), hw.mono('RAM', h => h.ram), hw.mono('Storage Array', h => h.hardDisk),
-        hw.text('OS / Hypervisor', h => h.operatingSystem), hw.location('DC Location'), hw.condition, hw.state,
+        hw.text('OS / Hypervisor', h => h.operatingSystem), hw.location('DC Location'), hw.condition, hw.state, ...purchase,
       ];
     case 'Printer':
       return [
         hw.id, hw.name('Printer Name'), hw.department, hw.model, hw.text('Print Technology', h => h.printTechnology),
         hw.text('Connection Type', h => h.connectionType), hw.ip('IP Address'), hw.serial('Serial No.'),
-        hw.location('Office Location'), hw.condition, hw.state,
+        hw.location('Office Location'), hw.condition, hw.state, ...purchase,
       ];
     default:
       return [
         hw.id, ...(group === 'All' ? [hw.category] : []), hw.department, hw.assignee, hw.name('Asset Name'),
-        hw.mono('Year', h => h.yearOfPurchase), hw.location('Location'), hw.model, hw.serial('S/N / Service Tag'),
+        hw.location('Location'), hw.model, hw.serial('S/N / Service Tag'),
         hw.mono('Engraved No.', h => h.engravedNumber), hw.text('OS / Details', h => h.operatingSystem || h.firmwareVersion),
-        hw.mono('RAM', h => h.ram), hw.mono('Storage', h => h.hardDisk), hw.condition, hw.state,
+        hw.mono('RAM', h => h.ram), hw.mono('Storage', h => h.hardDisk), hw.condition, hw.state, ...purchase,
       ];
   }
 }

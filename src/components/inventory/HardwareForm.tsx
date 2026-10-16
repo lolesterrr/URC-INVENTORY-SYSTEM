@@ -9,8 +9,10 @@ import { Field, RecordSelect, SelectField } from './ui';
 
 const blank = {
   id: '', category: 'Desktop', assetName: '', model: '', condition: '', lifecycleState: 'In Stock',
-  yearOfPurchase: '', serialNumber: '', engravedNumber: '', operatingSystem: '', ram: '', hardDisk: '',
+  serialNumber: '', engravedNumber: '', operatingSystem: '', ram: '', hardDisk: '',
   ipAddress: '', portCount: '', firmwareVersion: '', serverRole: '', cpuCores: '', connectionType: '', printTechnology: '',
+  // Held as text while editing; an empty cost is saved as null, never as 0.
+  purchaseDate: '', purchaseCost: '', orderNumber: '', supplier: '', warrantyExpires: '', warrantyNotes: '',
 };
 type Draft = typeof blank;
 type Key = keyof Draft;
@@ -21,6 +23,8 @@ interface FieldSpec {
   placeholder?: string;
   mono?: boolean;
   required?: boolean;
+  type?: 'text' | 'number' | 'date';
+  wide?: boolean;
 }
 
 // Fields that depend on the device category. Only the asset name is required; the rest may be unknown.
@@ -59,9 +63,19 @@ const CATEGORY_FIELDS: Record<'network' | 'server' | 'printer' | 'standard', Fie
 };
 
 const SHARED_FIELDS: FieldSpec[] = [
-  { key: 'yearOfPurchase', label: 'Year of purchase', placeholder: `e.g. ${new Date().getFullYear()}`, mono: true },
   { key: 'serialNumber', label: 'Serial number / service tag', mono: true },
   { key: 'engravedNumber', label: 'Engraved tag number', mono: true },
+];
+
+// Procurement details, all optional. Much of the old register knows only the purchase year, so the date
+// field takes a bare year too, and an unknown cost is left empty instead of being recorded as nothing paid.
+const PURCHASE_FIELDS: FieldSpec[] = [
+  { key: 'purchaseDate', label: 'Purchased', placeholder: `e.g. ${new Date().getFullYear()} or ${new Date().getFullYear()}-03-14`, mono: true },
+  { key: 'purchaseCost', label: 'Purchase cost (UGX)', placeholder: 'leave empty if not known', mono: true, type: 'number' },
+  { key: 'orderNumber', label: 'LPO / order reference', placeholder: 'e.g. URC/LPO/2019/045', mono: true },
+  { key: 'supplier', label: 'Supplier', placeholder: 'the vendor on the delivery note' },
+  { key: 'warrantyExpires', label: 'Warranty ends', type: 'date' },
+  { key: 'warrantyNotes', label: 'Warranty notes', placeholder: 'e.g. 3-year on-site cover, logged through the supplier', wide: true },
 ];
 
 function fieldsFor(category: string): FieldSpec[] {
@@ -77,7 +91,9 @@ function toDraft(h: HardwareAsset): Draft {
     const v = h[key as keyof HardwareAsset];
     if (typeof v === 'string') draft[key] = v;
   }
-  return { ...draft, assetName: assetName(h) };
+  // The cost is the one number here; it is edited as text so "unknown" stays distinct from 0.
+  const cost = h.purchaseCost;
+  return { ...draft, assetName: assetName(h), purchaseCost: cost === null || cost === undefined ? '' : String(cost) };
 }
 
 export default function HardwareForm({
@@ -109,6 +125,7 @@ export default function HardwareForm({
     return onSave({
       ...initial,
       ...values,
+      purchaseCost: values.purchaseCost === '' ? null : Number(values.purchaseCost),
       departmentId,
       department: initial?.department ?? '',
       locationId,
@@ -122,7 +139,19 @@ export default function HardwareForm({
     });
   };
 
-  const renderField = (f: FieldSpec) => <Field key={f.key} label={f.label} placeholder={f.placeholder} mono={f.mono} required={f.required} {...bind(f.key)} />;
+  const renderField = (f: FieldSpec) => (
+    <Field
+      key={f.key}
+      label={f.label}
+      placeholder={f.placeholder}
+      mono={f.mono}
+      required={f.required}
+      type={f.type}
+      wide={f.wide}
+      min={f.type === 'number' ? 0 : undefined}
+      {...bind(f.key)}
+    />
+  );
 
   return (
     <FormModal ctx={ctx} noun="hardware asset" onSubmit={submit}>
@@ -142,6 +171,10 @@ export default function HardwareForm({
             {initial?.assignee && <>, with <strong className="text-slate-800">{initial.assignee}</strong></>}. Use “Change state”, “Check out” or “Check in” in the register.
           </p>
         )}
+        <h4 className="sm:col-span-2 mt-1 pt-3 border-t border-slate-150 text-[10px] font-bold text-slate-500 uppercase font-mono">
+          Purchase &amp; warranty
+        </h4>
+        {PURCHASE_FIELDS.map(renderField)}
         {startsDeployed && (
           <div className="sm:col-span-2 space-y-2">
             {!shared && <StaffPicker label="Assignee (starts Deployed)" staff={directory.staff} value={assigneeId} onChange={setAssigneeId} onAddStaff={onAddStaff} />}

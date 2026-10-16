@@ -89,13 +89,49 @@ Line-by-line route review and the git-history secret check are still pending (T2
   1. **Lifecycle states** (T9a) ✅
   2. **Check-out / check-in with per-asset history** (T9b) ✅
   3. **Departments, staff and locations as real records** (T9c) ✅
-  4. Purchase and warranty fields with in-app expiry alerts
-  5. Then CSV import/export, QR labels and standard reports, in an order to agree later.
+  4. **Purchase and warranty fields with in-app expiry alerts** (T9d) ✅
+  5. **Next:** CSV import/export, QR labels and standard reports, in an order to agree with the user.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
 
 ### Completed
+- [x] T9d Purchase and warranty fields with in-app alerts (2026-10-12). `docs/FEATURE_COMPARISON.md` §B marks "Purchase date, cost, order number, LPO reference" and "Warranty expiry tracking and alerts" as **Must (v1)**.
+  - **Decisions taken with the user (2026-10-12):**
+    - **One mixed-precision purchase date.** `purchase_date` holds `''`, `YYYY` or `YYYY-MM-DD`. The legacy years survive unchanged, no day is ever invented, and there is only one field to fill in. The alternative (an exact date plus a year fallback) was rejected because two overlapping fields can disagree.
+    - **Purchase fields need `assets:write`** (Admin, IT Officer), like every other asset field. No new permission: the Manager keeps view, export and disposal approval, as in §4a.
+    - **The warranty warning window is configurable**, `WARRANTY_WARNING_DAYS`, default **90** days — longer than the 30 days used for licences, because replacing or extending cover goes through URC procurement.
+  - **What the legacy data actually holds** (checked first, counts only): all 82 assets have a four-digit `yearOfPurchase` and **no** `dateAcquired` and **no** `cost` at all. Those two columns only ever held values this app invented.
+  - **Schema + migration 0005** (hand-written `--custom`, snapshot regenerated from the schema):
+    - Add `purchase_date`, `purchase_cost` (REAL, **nullable** — NULL means unknown, so it is no longer confused with free), `order_number` (the LPO / order reference), `supplier`, `warranty_expires` and `warranty_notes`.
+    - `year_of_purchase` → `purchase_date` verbatim, then dropped.
+    - `cost` → `purchase_cost`, turning `0` into NULL.
+    - `date_acquired` is **dropped without migrating**: no form ever sent it, nothing ever displayed it, and `POST /api/hardware` stamped every new asset with the current date. That is an invented value, which CLAUDE.md forbids, so it is removed rather than carried forward.
+    - The alerts `type` enum gains `warranty_expiry` (a table rebuild, since SQLite CHECK constraints cannot be altered).
+    - One audit entry records the conversion.
+  - **Rules** go in `shared/purchase.ts` (dependency-free, used by the server and bundled into the UI): partial-date validation and `warrantyStatus()` → `none` / `ok` / `expiring` / `expired` with the day count. The server and the table badge then agree by construction.
+  - **Alerts:** `runAlertChecks` gains a `warranty_expiry` check per asset. Retired and Disposed assets are skipped — cover on an asset out of service is not news. Expired and about-to-expire produce different wording. The window comes from the config, so the alert text can state it. Email delivery stays out of scope (Q11 has no SMTP).
+  - **Display:** `columns.tsx` gains Purchased, Warranty, Cost, LPO and Supplier columns, so the CSV export carries them too; `HardwareForm` gains a "Purchase & warranty" block. Unknown values stay empty (`—`); a cost of nothing is never shown as `0`.
+  - **Dashboard:** `/api/analytics` reports `totalHardwareValue` as `null` when no asset has a cost, plus `costedHardwareCount`, so the tile stops claiming "UGX 0" for a register nobody has priced yet.
+  - **Not in this task:** depreciation and book value, a suppliers directory (`supplier` stays free text), maintenance contracts (all "Later"/"Should" in §B), and email delivery.
+  - **Built as planned, with these notes:**
+    - The alerts `type` enum needed **no migration**: drizzle stores a SQLite text enum as plain `text` with no CHECK constraint, so adding `warranty_expiry` is a TypeScript-only change. (The handoff expected a table rebuild.)
+    - `warrantyStatus()` is the single classifier. The server scans with it and the register colours its badge with it, and the configured window reaches the browser through `/api/analytics` (`warrantyWarningDays`), so the Alert Center and the register cannot drift apart.
+    - The window is `WARRANTY_WARNING_DAYS` (default 90), threaded from `loadConfig()` through `AppOptions` into the hardware, alerts and analytics routers. `runAlertChecks(db, { now, warrantyWarningDays })` replaced the old `(db, now)` signature.
+    - Alerts skip Retired and Disposed assets: cover on something out of service is not news. One open alert per asset and type, as for licences.
+    - The dashboard valuation tile now reads "UGX X (from N of M assets)", or "No purchase costs recorded yet". It used to show "UGX 0" for every install, because `cost` defaulted to 0 and no form ever set it.
+    - The purchase block (Purchased, Warranty, Cost, LPO, Supplier) is appended to the end of every register, so the day-to-day columns stay leftmost and the CSV export still carries everything from one definition.
+  - **Bug found by the browser run and fixed:** `DataTable` only substituted the em dash for columns *without* a `render` function, so an unknown cost or warranty date rendered as a blank cell while every other empty cell showed `—`. The fallback now covers rendered content too (`src/components/inventory/ui.tsx`).
+  - **Verified:**
+    - `npm run lint` ✅; `npm test` 80/80 ✅ (15 new in `tests/purchase.test.ts`: the shared date and warranty rules, the API fields and their rejections, the alert window and de-duplication, the valuation, migration 0005 and the legacy import); `npm run build` ✅ with no server code in the browser bundle; `npx drizzle-kit generate` reports "No schema changes" ✅.
+    - **Upgrade drill** ✅: a database built by `origin/main` (the T9c merge) from the legacy JSON, then opened by this build. All 82 purchase years carried over, all 82 recognised as year-only, no cost or warranty invented, `year_of_purchase` / `date_acquired` / `cost` gone, the 80 Deployed assets still each have exactly one open check-out, 10/7/68 directory records intact, `integrity_check` ok. Counts only were printed, never names.
+    - **Browser** ✅ (Chromium, production build, 12 steps): a year-only asset (shows "2019 (year)", everything else `—`), a fully documented asset (UGX 4,500,000, amber warranty badge, LPO kept), a lapsed warranty (red badge), an unusable purchase date refused with the server's message, clearing a cost back to blank rather than 0, the change on the asset's History (`purchaseCost: 4500000 → —`), the CSV export carrying all five headers and no 0 cost, both warranties in the Alert Center labelled "Warranty Expiry", the dashboard valuation before and after pricing one asset, and the Manager seeing the purchase block with NEW ASSET and Edit disabled. A second run with `WARRANTY_WARNING_DAYS=10` confirmed the register badge follows the server's window, not the shared default. Console errors: only the expected pre-sign-in 401s and the deliberate 400.
+  - **Follow-ups:**
+    - Alert de-duplication keys on (asset, type, status), so an asset that already has an unread "warranty ending" alert does not get a second one when the cover actually lapses. Licences behave the same way; resolving the first alert lets the next scan raise the expired one.
+    - `supplier` is free text. A suppliers and manufacturers directory is "Should" in §B and would reuse the T9c directory machinery.
+    - Depreciation and book value, maintenance contracts and email delivery stay out of scope (§B "Later", and Q11 has no SMTP).
+    - No warranty dates exist in the legacy data, so the alerts are quiet until someone enters them. Collecting them from the original LPOs is a data-entry task for URC IT.
+    - **Migration 0005 drops three columns, so take a manual backup before deploying this release.** The startup catch-up backup still runs *after* migrations (the same standing issue as 0004).
 - [x] T9a Lifecycle states (2026-09-29) (hardware only; software and server parts keep their own statuses).
   - States: In Stock → Deployed → In Repair → Retired → Disposed. Allowed moves: In Stock, Deployed and In Repair can move to each other or to Retired. Retired can go back to In Stock or move on to Disposed. Disposed is final.
   - Data: the free-text `status` was really a condition note (legacy values: "OK", "Faulty", "To be disposed", "Upgrade to 1TB"…). Migration 0002 (hand-written SQL; snapshot generated from the schema) adds `lifecycle_state`, `lifecycle_changed_at` and `condition`, then drops `status`. Lifecycle words map to states ("In Use"→Deployed, "Maintenance"→In Repair, "Retired", "In Stock"). Any other text is kept as the condition note, and its state is taken from the assignee (assigned → Deployed, else In Stock). Nothing is set to Retired or Disposed automatically; the migration writes one audit entry. `npm run import-json` uses the same mapping.

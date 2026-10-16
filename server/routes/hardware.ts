@@ -52,8 +52,9 @@ function toColumns(input: z.infer<typeof hardwareFields>): Partial<Row> {
   return out;
 }
 
-export function hardwareRouter(db: DB) {
+export function hardwareRouter(db: DB, warrantyWarningDays?: number) {
   const router = Router();
+  const checkAlerts = () => runAlertChecks(db, { warrantyWarningDays });
   const active = (id: string) =>
     db.select().from(hardware).where(and(eq(hardware.id, id), isNull(hardware.deletedAt))).get();
   const openAssignment = (hardwareId: string) =>
@@ -97,7 +98,6 @@ export function hardwareRouter(db: DB) {
       lifecycleChangedAt: new Date().toISOString(),
       assetName: cols.assetName,
       category: cols.category ?? detectCategory(cols.assetName, cols.model ?? ''),
-      dateAcquired: cols.dateAcquired || new Date().toISOString().slice(0, 10),
     };
     db.insert(hardware).values(values).run();
     const created = active(body.id)!;
@@ -116,7 +116,7 @@ export function hardwareRouter(db: DB) {
       entityId: created.id,
       after,
     });
-    runAlertChecks(db);
+    checkAlerts();
     res.status(201).json(toApi(created));
   });
 
@@ -141,7 +141,7 @@ export function hardwareRouter(db: DB) {
       before: snapshot(existing),
       after: snapshot(updated),
     });
-    runAlertChecks(db);
+    checkAlerts();
     res.json(toApi(updated));
   });
 
@@ -222,7 +222,7 @@ export function hardwareRouter(db: DB) {
       before: { lifecycleState: existing.lifecycleState, assignee: dir.staff(existing.assigneeId) },
       after: { lifecycleState: 'Deployed', assignee: person?.fullName ?? '' },
     });
-    runAlertChecks(db);
+    checkAlerts();
     res.status(201).json(hardwareToApi(updated, dir));
   });
 
@@ -261,7 +261,7 @@ export function hardwareRouter(db: DB) {
       before: { lifecycleState: existing.lifecycleState, assignee: assignment.assignee },
       after: { lifecycleState: updated.lifecycleState, assignee: '' },
     });
-    runAlertChecks(db);
+    checkAlerts();
     res.json(toApi(updated));
   });
 
