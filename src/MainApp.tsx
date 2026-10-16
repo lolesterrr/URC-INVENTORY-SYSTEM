@@ -115,6 +115,8 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             onCheckoutHardware={actions.checkoutHardware}
             onCheckinHardware={actions.checkinHardware}
             onAddStaff={addStaff}
+            onPreviewImport={actions.previewHardwareImport}
+            onImportHardware={actions.importHardware}
             onAddSoftware={actions.addSoftware}
             onUpdateSoftware={actions.updateSoftware}
             onDeleteSoftware={actions.deleteSoftware}

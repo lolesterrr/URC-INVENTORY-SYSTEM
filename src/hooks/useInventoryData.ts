@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import type {
-  Alert, AuditLog, DashboardStats, Department, Directory, DirectoryKind, HardwareAsset, LifecycleState, LocationRecord, ServerComponent, SoftwareLicense, StaffMember,
+  Alert, AuditLog, DashboardStats, Department, Directory, DirectoryKind, HardwareAsset, ImportResult, LifecycleState, LocationRecord, ServerComponent, SoftwareLicense, StaffMember,
 } from '../types';
 
 export interface InventoryData {
@@ -92,6 +92,14 @@ export function useInventoryData() {
     addServerComponent: (item: ServerComponent) => change('/api/server-components', 'POST', item),
     updateServerComponent: (item: ServerComponent) => change(`/api/server-components/${encodeURIComponent(item.id)}`, 'PUT', item),
     deleteServerComponent: (id: string) => change(`/api/server-components/${encodeURIComponent(id)}`, 'DELETE'),
+    /** Asks what a CSV file would do. Nothing is written, so the lists are left as they are. */
+    previewHardwareImport: (csv: string, createMissingDirectory: boolean) =>
+      api<ImportResult>('/api/hardware/import', { method: 'POST', body: { csv, dryRun: true, createMissingDirectory } }),
+    importHardware: async (csv: string, createMissingDirectory: boolean) => {
+      const result = await api<ImportResult>('/api/hardware/import', { method: 'POST', body: { csv, dryRun: false, createMissingDirectory } });
+      await refresh();
+      return result;
+    },
     resolveAlert: (id: string) => change(`/api/alerts/resolve/${encodeURIComponent(id)}`, 'POST'),
     runAlertChecks: () => change('/api/alerts/check-triggers', 'POST'),
     saveDepartment: (input: DepartmentInput, id?: number) => saveRecord<Department>('departments', input, id),
