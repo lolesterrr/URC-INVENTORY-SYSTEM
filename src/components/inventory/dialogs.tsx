@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { Printer, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { assetLabelPayload } from '../../../shared/labels';
+import { QrCode } from './QrCode';
 import { ErrorNote, ModalShell } from './ui';
 
 export interface ArchiveTarget {
@@ -49,35 +51,42 @@ export function ArchiveDialog({ target, onConfirm, onClose }: { target: ArchiveT
   );
 }
 
-/** Decorative barcode derived from the asset ID, for the on-screen asset pass. */
-function Barcode({ id }: { id: string }) {
-  const hash = [...id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+/**
+ * The on-screen asset pass. This used to draw stripes derived from the asset ID: it looked like a barcode
+ * and decoded to nothing, so anyone who scanned it got nothing back. It is a real QR code now, holding the
+ * same thing a printed label holds.
+ */
+function AssetPass({ id, base }: { id: string; base: string }) {
   return (
     <div className="flex flex-col items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm max-w-[240px]">
-      <div className="flex items-center justify-center p-1 bg-white mb-2">
-        {Array.from({ length: 28 }, (_, i) => {
-          const width = (hash + i) % 3 === 0 ? 'w-1' : (hash + i) % 5 === 0 ? 'w-2' : 'w-0.5';
-          const gap = (hash + i) % 4 === 0 ? 'mr-0.5' : 'mr-1';
-          return <div key={i} className={`h-12 bg-slate-900 ${width} ${gap}`} />;
-        })}
-      </div>
-      <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-slate-700">{id}</span>
+      <QrCode value={assetLabelPayload(base, id)} size="120px" title={`QR code for asset ${id}`} />
+      <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-slate-700 mt-2">{id}</span>
       <span className="text-[9px] text-slate-400 font-medium mt-1">URC IT ASSET PASS</span>
     </div>
   );
 }
 
-export function BarcodeDialog({ id, onClose }: { id: string; onClose: () => void }) {
+export function BarcodeDialog({ id, onPrintLabel, onClose }: { id: string; onPrintLabel?: () => void; onClose: () => void }) {
+  const base = typeof window === 'undefined' ? '' : window.location.origin;
   return (
     <ModalShell onClose={onClose} title={<><Tag className="h-4 w-4 text-yellow-600" />Asset pass</>}>
       <div className="space-y-3">
         <div className="flex justify-center py-2 bg-slate-50 border border-slate-100 rounded">
-          <Barcode id={id} />
+          <AssetPass id={id} base={base} />
         </div>
-        <p className="text-[10px] text-slate-400 text-center">Search for this ID, or use the Barcode Scan Center, to find the asset.</p>
-        <button onClick={onClose} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 rounded text-xs font-mono uppercase">
-          Close
-        </button>
+        <p className="text-[10px] text-slate-400 text-center">
+          Scanning this code opens the asset on a phone on the URC network. The ID also works in the search box.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 rounded text-xs font-mono uppercase">
+            Close
+          </button>
+          {onPrintLabel && (
+            <button onClick={onPrintLabel} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 rounded text-xs font-mono uppercase flex items-center justify-center gap-1.5">
+              <Printer className="h-3.5 w-3.5" /> Print label
+            </button>
+          )}
+        </div>
       </div>
     </ModalShell>
   );

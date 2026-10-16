@@ -2,7 +2,7 @@
  * Inventory registers page: hardware, software licences and server spare parts.
  * Building blocks live in ./inventory/.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Directory, HardwareAsset, ImportResult, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
 import { toCsv } from '../../shared/csv';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
@@ -12,6 +12,7 @@ import type { FormContext } from './inventory/FormModal';
 import HardwareForm from './inventory/HardwareForm';
 import { HistoryDialog } from './inventory/HistoryDialog';
 import { ImportDialog } from './inventory/ImportDialog';
+import { LabelDialog } from './inventory/LabelDialog';
 import InventoryToolbar from './inventory/InventoryToolbar';
 import { LifecycleDialog } from './inventory/LifecycleDialog';
 import {
@@ -51,6 +52,8 @@ interface InventoryTablesProps {
   warrantyWarningDays?: number;
   selectedSubTab: InventoryTab;
   setSelectedSubTab: (tab: InventoryTab) => void;
+  /** An asset ID from a scanned label (`?asset=`); the register opens filtered to it. */
+  focusAssetId?: string | null;
 }
 
 type Dialog =
@@ -60,6 +63,7 @@ type Dialog =
   | { kind: 'archive'; target: ArchiveTarget; run: () => Promise<void> }
   | { kind: 'barcode'; id: string }
   | { kind: 'import' }
+  | { kind: 'labels'; assets: HardwareAsset[] }
   | { kind: 'lifecycle'; item: HardwareAsset }
   | { kind: 'history'; id: string; name: string }
   | { kind: 'checkout'; item: HardwareAsset }
@@ -83,6 +87,14 @@ export default function InventoryTables(props: InventoryTablesProps) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [group, setGroup] = useState<HardwareGroup>('All');
   const [dialog, setDialog] = useState<Dialog | null>(null);
+
+  // A scanned label lands here: show just that asset, across every category.
+  const focusAssetId = props.focusAssetId;
+  useEffect(() => {
+    if (!focusAssetId) return;
+    setGroup('All');
+    setFilters({ ...EMPTY_FILTERS, search: focusAssetId });
+  }, [focusAssetId]);
 
   // UI hints only; the server enforces the same rules.
   const canEdit = permissions.includes('assets:write');
@@ -148,8 +160,18 @@ export default function InventoryTables(props: InventoryTablesProps) {
         );
       case 'archive':
         return <ArchiveDialog target={dialog.target} onConfirm={dialog.run} onClose={close} />;
-      case 'barcode':
-        return <BarcodeDialog id={dialog.id} onClose={close} />;
+      case 'barcode': {
+        const asset = hardware.find(h => h.id === dialog.id);
+        return (
+          <BarcodeDialog
+            id={dialog.id}
+            onPrintLabel={asset ? () => setDialog({ kind: 'labels', assets: [asset] }) : undefined}
+            onClose={close}
+          />
+        );
+      }
+      case 'labels':
+        return <LabelDialog assets={dialog.assets} onClose={close} />;
       case 'import':
         return <ImportDialog onPreview={props.onPreviewImport} onImport={props.onImportHardware} onClose={close} />;
       case 'lifecycle':
@@ -189,6 +211,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
         canEdit={canEdit}
         onExport={exportCsv}
         onImport={tab === 'hardware' ? () => setDialog({ kind: 'import' }) : undefined}
+        onLabels={tab === 'hardware' ? () => setDialog({ kind: 'labels', assets: shownHardware }) : undefined}
         onAdd={openNew}
         departments={directory.departments.map(d => d.name)}
       />
