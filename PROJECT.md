@@ -74,6 +74,7 @@ Line-by-line route review and the git-history secret check are still pending (T2
 - **Q10** Does the server have internet access? It is no longer required.
 - **Q11** Where are the email/SMTP settings for alerts? This only matters for a later feature.
 - **Q12** What label stock does URC IT print on — an A4 sticker sheet (and which layout, e.g. 24 or 65 per sheet) or a roll-fed label printer? Deferred on 2026-10-16: T9f ships an A4 grid with presets and custom millimetre sizes, so the answer is a setting rather than a rewrite. Confirm before ordering stickers.
+- **Q13** What is URC IT's actual replacement-life policy per hardware category (laptops, desktops, servers, printers, network gear)? T9g (2026-11-03) ships common industry defaults (4/4/5/6/7 years), labelled in the UI as assumptions, so the "due for replacement" report means something on day one. Confirm the real policy and the numbers become a setting rather than a rewrite.
 
 ## 6. Roadmap (phases)
 0. **Discovery**: feature comparison, decisions, freeze v1 scope. ✅
@@ -93,7 +94,11 @@ Line-by-line route review and the git-history secret check are still pending (T2
   4. **Purchase and warranty fields with in-app expiry alerts** (T9d) ✅
   5. **CSV import** (T9e) ✅ — chosen by the user (2026-10-16) as the first of the three remaining features.
   6. **QR labels** (T9f) ✅ — chosen by the user (2026-10-16).
-  7. **Next:** standard reports.
+  7. **Standard reports** (T9g) — *in progress*. Decided with the user (2026-11-03):
+     - **All four reports built together** (by department, by age, due for replacement, licence compliance), in one PR, since they share the same data and UI shell.
+     - **Age for a year-only purchase date uses a mid-year (1 July) estimate.** Most purchase dates are year-only; a single estimate is simpler to read than a range, and a report that must state what it covers (per CLAUDE.md's "no invented values") should say when an age is estimated rather than exact.
+     - **Due-for-replacement uses common per-category defaults**, not a URC-confirmed policy: Laptop/Desktop 4 years, Server 5 years, Printer 6 years, Switch/Router 7 years. "Other" has no policy. Labelled in the UI as assumptions pending URC confirmation (see Q13), not invented facts about any asset.
+     - **Reports are exportable** (CSV, matching the column-driven machinery from CSV import/export; print, matching the existing "PRINT PDF" pattern), under the existing `assets:read` permission — no new permission, matching today's model where Auditors already see cost fields on the register.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
