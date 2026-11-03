@@ -4,6 +4,7 @@ import type { DB } from '../db';
 import { alerts, auditLog, hardware, serverComponents, software } from '../db/schema';
 import { requirePermission } from '../auth/session';
 import { DEFAULT_WARRANTY_WARNING_DAYS } from '../../shared/purchase';
+import { buildReports, type ReportsOptions } from '../services/reports';
 
 const tally = <T>(items: T[], key: (i: T) => string, amount: (i: T) => number = () => 1) =>
   items.reduce<Record<string, number>>((acc, i) => {
@@ -65,6 +66,14 @@ export function analyticsRouter(db: DB, warrantyWarningDays = DEFAULT_WARRANTY_W
       softwareStatusBreakdown: tally(sw, s => s.status),
       serverComponentCategoryBreakdown: tally(sc, s => s.category, s => s.quantity),
     });
+  });
+  return router;
+}
+
+export function reportsRouter(db: DB, options: ReportsOptions = {}) {
+  const router = Router();
+  router.get('/', requirePermission('assets:read'), (_req, res) => {
+    res.json(buildReports(db, options));
   });
   return router;
 }

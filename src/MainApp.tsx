@@ -15,6 +15,7 @@ import type { InventoryTab } from './components/inventory/model';
 import BarcodeScanner from './components/BarcodeScanner';
 import DirectoryView from './components/directory/DirectoryView';
 import NotificationCenter from './components/NotificationCenter';
+import ReportsView from './components/reports/ReportsView';
 import HelpGuide from './components/HelpGuide';
 import UserManagement from './components/UserManagement';
 import BackupManagement from './components/BackupManagement';
@@ -178,6 +179,8 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             currentUserRole={currentUser.role}
           />
         );
+      case 'reports':
+        return <ReportsView />;
       case 'users':
         return can('users:manage') ? <UserManagement currentUserId={currentUser.id} /> : noAccess;
       case 'backups':

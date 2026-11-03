@@ -234,6 +234,73 @@ export interface DashboardStats {
   warrantyWarningDays: number;
 }
 
+/** The four standard reports, from GET /api/reports. */
+export interface DepartmentReportRow {
+  department: string;
+  assetCount: number;
+  costedCount: number;
+  totalValue: number | null;
+}
+
+export type AgeBucket = 'Under 1 year' | '1–2 years' | '2–4 years' | '4–6 years' | '6+ years' | 'Unknown';
+
+export interface AgeReportRow {
+  id: string;
+  assetName: string;
+  category: string;
+  department: string;
+  purchaseDate: string;
+  isYearOnly: boolean;
+  ageYears: number | null;
+  bucket: AgeBucket;
+}
+
+export type ReplacementState = 'no_policy' | 'unknown' | 'ok' | 'due_soon' | 'overdue';
+
+export interface ReplacementReportRow {
+  id: string;
+  assetName: string;
+  category: string;
+  department: string;
+  purchaseDate: string;
+  ageYears: number | null;
+  policyYears: number | null;
+  dueDate: string | null;
+  state: ReplacementState;
+}
+
+export type LicenceExpiryState = 'none' | 'ok' | 'expiring' | 'expired';
+
+export interface LicenceReportRow {
+  id: string;
+  name: string;
+  category: string;
+  department: string;
+  seatCapacity: number;
+  activeSeats: number;
+  overCapacity: boolean;
+  expiryDate: string;
+  expiryState: LicenceExpiryState;
+  expiryDays: number;
+}
+
+export interface ReportsData {
+  generatedAt: string;
+  byDepartment: { coverage: { withDepartment: number; total: number }; rows: DepartmentReportRow[] };
+  byAge: {
+    ageMethod: 'mid-year-estimate';
+    coverage: { withPurchaseDate: number; total: number };
+    buckets: { bucket: AgeBucket; count: number }[];
+    assets: AgeReportRow[];
+  };
+  dueForReplacement: {
+    policyYears: Partial<Record<string, number>>;
+    coverage: { evaluable: number; total: number };
+    assets: ReplacementReportRow[];
+  };
+  licenceCompliance: { coverage: { withExpiryDate: number; total: number }; licences: LicenceReportRow[] };
+}
+
 /** One row of a CSV import, as `POST /api/hardware/import` reports it. */
 export interface ImportRow {
   /** Position among the data rows, 1-based. The header is not counted and blank lines are ignored. */

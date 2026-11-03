@@ -73,7 +73,7 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | CSV / Excel import with column mapping and validation | ✅ | ✅ | ✅ | ✅ | ✅ (T9e; matched on Asset ID, with a dry-run preview) | **Must** |
 | CSV / Excel / PDF export and custom reports | ✅ | ✅ | ✅ | ✅ | ◐ (CSV and print) | **Must** |
-| Standard reports: by department, by age, due for replacement, licence compliance | ✅ | ✅ | ✅ | ✅ | ◐ | **Must** (department, age, replacement planning) |
+| Standard reports: by department, by age, due for replacement, licence compliance | ✅ | ✅ | ✅ | ✅ | ✅ (T9g; each figure states what it covers, replacement policy labelled an assumption) | **Must** (department, age, replacement planning) |
 | Email notifications through the internal SMTP / Exchange server (warranty, licence expiry, overdue check-ins) | ✅ | ✅ | ✅ | ✅ | ◐ (UI only, verify) | Should (in-app alerts are a Must) |
 
 ## G. URC-specific ideas (not typical in competitors)

@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
-import { BellRing, BookOpen, Building2, DatabaseBackup, FileSpreadsheet, LayoutDashboard, ScanLine, User as UserIcon, Users, X } from 'lucide-react';
+import { BarChart3, BellRing, BookOpen, Building2, DatabaseBackup, FileSpreadsheet, LayoutDashboard, ScanLine, User as UserIcon, Users, X } from 'lucide-react';
 import type { Permission, User } from '../../types';
 import urcLogo from '../../assets/images/company_logo.png';
 
-export type AppTab = 'dashboard' | 'inventory' | 'directory' | 'barcode' | 'notifications' | 'users' | 'backups' | 'docs' | 'profile';
+export type AppTab = 'dashboard' | 'inventory' | 'directory' | 'barcode' | 'notifications' | 'reports' | 'users' | 'backups' | 'docs' | 'profile';
 
 interface NavItem {
   id: AppTab;
@@ -22,6 +22,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { id: 'directory', label: 'Departments, Locations & Staff', icon: Building2 },
       { id: 'barcode', label: 'Barcode Scan Center', icon: ScanLine },
       { id: 'notifications', label: 'Alert Center', icon: BellRing },
+      { id: 'reports', label: 'Standard Reports', icon: BarChart3 },
     ],
   },
   {
