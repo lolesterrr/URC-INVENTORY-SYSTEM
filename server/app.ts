@@ -9,7 +9,7 @@ import { hardwareRouter } from './routes/hardware';
 import { softwareRouter } from './routes/software';
 import { serverComponentsRouter } from './routes/serverComponents';
 import { alertsRouter } from './routes/alerts';
-import { analyticsRouter, auditLogsRouter } from './routes/reports';
+import { analyticsRouter, auditLogsRouter, reportsRouter } from './routes/reports';
 import { backupsRouter } from './routes/backups';
 import { departmentsRouter, locationsRouter, staffRouter } from './routes/directory';
 import type { BackupService } from './services/backup';
@@ -75,6 +75,7 @@ export function createApp(db: DB, opts: AppOptions) {
   api.use('/alerts', alertsRouter(db, warrantyWarningDays));
   api.use('/audit-logs', auditLogsRouter(db));
   api.use('/analytics', analyticsRouter(db, warrantyWarningDays));
+  api.use('/reports', reportsRouter(db));
   if (opts.backups) api.use('/backups', backupsRouter(opts.backups));
   app.use('/api', api);
 

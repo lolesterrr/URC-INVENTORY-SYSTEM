@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { Directory, HardwareAsset, ImportResult, LifecycleState, Permission, ServerComponent, SoftwareLicense, StaffMember, UserRole } from '../types';
-import { toCsv } from '../../shared/csv';
+import { downloadCsv } from '../lib/downloadCsv';
 import { CheckinDialog, CheckoutDialog } from './inventory/AssignmentDialogs';
 import { componentColumns, hardwareColumns, softwareColumns } from './inventory/columns';
 import { ArchiveDialog, BarcodeDialog, type ArchiveTarget } from './inventory/dialogs';
@@ -68,19 +68,6 @@ type Dialog =
   | { kind: 'history'; id: string; name: string }
   | { kind: 'checkout'; item: HardwareAsset }
   | { kind: 'checkin'; item: HardwareAsset };
-
-function downloadCsv<T>(fileName: string, columns: Column<T>[], rows: T[]) {
-  // The BOM makes Excel read the file as UTF-8.
-  const blob = new Blob(['﻿' + toCsv(columns.map(c => c.header), rows.map(r => columns.map(c => c.value(r))))], {
-    type: 'text/csv;charset=utf-8;',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function InventoryTables(props: InventoryTablesProps) {
   const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, warrantyWarningDays, selectedSubTab: tab } = props;
