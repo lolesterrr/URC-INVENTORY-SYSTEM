@@ -83,10 +83,13 @@ Line-by-line route review and the git-history secret check are still pending (T2
 3. **Backups**: ✅ scheduled backup, retention, restore script, restore drill.
 4. **Refactor**: ✅ split `server.ts` into routes, services and db. Split large components. Add tests.
 5. **v1 features**: ✅ (order in §7 T9).
+5.5 **v1.1 "Should" features**: ← *in progress*. Order chosen by the user (2026-11-03): Settings UI → Suppliers directory → Licence seat enforcement → Bulk edit → Attachments → Disposal approval workflow → Physical audit mode → Email alerts (last; needs SMTP info the user does not have yet, Q11).
 6. **Windows deployment**: Windows service, HTTPS, firewall rule, installation runbook (`docs/DEPLOYMENT.md`).
 
 ## 7. Tasks
 ### Active
+- [ ] T10 Phase 5.5, v1.1 features, in the order above (T10a Settings UI, T10b Suppliers, T10c Licence seats, T10d Bulk edit, T10e Attachments, T10f Disposal workflow, T10g Physical audit, T10h Email alerts).
+  - **T10a Settings UI** — *in progress*. Plan (2026-11-03): a new singleton `settings` table (company name; default QR label preset/custom size) plus a `replacement_policies` table (one row per hardware category, nullable years — NULL means no policy), seeded from T9g's `DEFAULT_REPLACEMENT_LIFE_YEARS`/`shared/labels.ts` defaults. `GET /api/settings` under `assets:read` (so the reports screen and label dialog can read the live values like everyone already reads cost fields); `PUT` under a new `settings:manage` permission (Admin only). `server/services/reports.ts` reads the live replacement policy instead of the hard-coded default, so T9g's Q13 promise ("editable later in settings") is kept. The company name is wired into one real place (the sidebar subtitle) rather than left decorative; the dashboard's hero banner keeps its own static branding text, which is a bigger design element than a plain company-name field, so that stays out of scope. The label dialog's size picker defaults to the saved preset instead of always starting at 24-per-sheet.
 - [ ] T6 User actions, outside the code: lock down or delete the Firebase project (F3). Rotate the old admin password wherever it is reused (F1).
 - [ ] T7 Decide whether to purge `data/*.json` and the old password from git history. That needs a force-push, so only with the user's approval.
 - [ ] T2 Security scan: review git history for other secrets.
