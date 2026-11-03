@@ -200,6 +200,23 @@ export const alerts = sqliteTable(
   t => [index('alerts_item_idx').on(t.itemId, t.type, t.status)],
 );
 
+// Singleton (always id 1): organisation-wide settings an Admin can change without a code deploy.
+export const settings = sqliteTable('settings', {
+  id: integer('id').primaryKey(),
+  companyName: text('company_name').notNull().default('Uganda Railways Corporation'),
+  /** A LABEL_LAYOUTS id ('24' | '40' | '65'), or 'custom' to use the two fields below. */
+  defaultLabelPreset: text('default_label_preset').notNull().default('24'),
+  defaultLabelWidthMm: real('default_label_width_mm'),
+  defaultLabelHeightMm: real('default_label_height_mm'),
+  ...timestamps,
+});
+
+/** One row per hardware category (HARDWARE_CATEGORIES). NULL means that category has no replacement-life policy. */
+export const replacementPolicies = sqliteTable('replacement_policies', {
+  category: text('category').primaryKey(),
+  lifeYears: integer('life_years'),
+});
+
 // Append-only: UPDATE and DELETE are blocked by triggers in the migration.
 export const auditLog = sqliteTable(
   'audit_log',

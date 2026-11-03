@@ -15,6 +15,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   'audit:read': 'View the change history',
   'users:manage': 'Manage user accounts',
   'backups:manage': 'Run and check database backups',
+  'settings:manage': 'Change organisation settings',
 };
 
 export default function ProfileView({ user, onUserChanged, onLogout }: { user: User; onUserChanged: (user: User) => void; onLogout: () => void }) {

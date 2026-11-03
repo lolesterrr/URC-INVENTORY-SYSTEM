@@ -23,7 +23,8 @@ export type Permission =
   | 'alerts:manage'
   | 'audit:read'
   | 'users:manage'
-  | 'backups:manage';
+  | 'backups:manage'
+  | 'settings:manage';
 
 /** The signed-in user, as returned by /api/auth/me. */
 export interface User {
@@ -234,6 +235,16 @@ export interface DashboardStats {
   warrantyWarningDays: number;
 }
 
+/** Organisation-wide settings, from GET/PUT /api/settings. Reading needs assets:read; writing needs settings:manage (Admin). */
+export interface AppSettings {
+  companyName: string;
+  defaultLabelPreset: string;
+  defaultLabelWidthMm: number | null;
+  defaultLabelHeightMm: number | null;
+  /** Years per hardware category; null means that category has no replacement-life policy. Every category is present. */
+  replacementPolicy: Record<string, number | null>;
+}
+
 /** The four standard reports, from GET /api/reports. */
 export interface DepartmentReportRow {
   department: string;
@@ -294,7 +305,7 @@ export interface ReportsData {
     assets: AgeReportRow[];
   };
   dueForReplacement: {
-    policyYears: Partial<Record<string, number>>;
+    policyYears: Partial<Record<string, number | null>>;
     coverage: { evaluable: number; total: number };
     assets: ReplacementReportRow[];
   };

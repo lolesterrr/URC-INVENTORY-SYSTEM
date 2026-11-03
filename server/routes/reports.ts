@@ -5,6 +5,7 @@ import { alerts, auditLog, hardware, serverComponents, software } from '../db/sc
 import { requirePermission } from '../auth/session';
 import { DEFAULT_WARRANTY_WARNING_DAYS } from '../../shared/purchase';
 import { buildReports, type ReportsOptions } from '../services/reports';
+import { loadSettings } from '../services/settings';
 
 const tally = <T>(items: T[], key: (i: T) => string, amount: (i: T) => number = () => 1) =>
   items.reduce<Record<string, number>>((acc, i) => {
@@ -70,10 +71,15 @@ export function analyticsRouter(db: DB, warrantyWarningDays = DEFAULT_WARRANTY_W
   return router;
 }
 
-export function reportsRouter(db: DB, options: ReportsOptions = {}) {
+/**
+ * The replacement-life policy is read live from settings on every request (it is editable in the
+ * Settings screen), not fixed at server start like the warranty window.
+ */
+export function reportsRouter(db: DB, options: Omit<ReportsOptions, 'replacementPolicy'> = {}) {
   const router = Router();
   router.get('/', requirePermission('assets:read'), (_req, res) => {
-    res.json(buildReports(db, options));
+    const { replacementPolicy } = loadSettings(db);
+    res.json(buildReports(db, { ...options, replacementPolicy }));
   });
   return router;
 }

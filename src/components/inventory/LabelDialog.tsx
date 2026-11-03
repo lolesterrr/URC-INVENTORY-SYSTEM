@@ -15,9 +15,27 @@ const CUSTOM = 'custom';
 const button = 'px-4 py-2 font-bold rounded-lg text-xs uppercase font-mono flex items-center gap-2 disabled:opacity-50';
 const input = 'w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500';
 
-export function LabelDialog({ assets, onClose }: { assets: HardwareAsset[]; onClose: () => void }) {
-  const [layoutId, setLayoutId] = useState(DEFAULT_LAYOUT.id);
-  const [custom, setCustom] = useState({ width: String(DEFAULT_LAYOUT.width), height: String(DEFAULT_LAYOUT.height) });
+export interface DefaultLabelLayout {
+  preset: string;
+  widthMm: number | null;
+  heightMm: number | null;
+}
+
+export function LabelDialog({
+  assets,
+  onClose,
+  defaultLayout,
+}: {
+  assets: HardwareAsset[];
+  onClose: () => void;
+  /** Starting size from Settings, so IT staff don't have to re-pick it every time. Falls back to the built-in default. */
+  defaultLayout?: DefaultLabelLayout;
+}) {
+  const [layoutId, setLayoutId] = useState(defaultLayout?.preset ?? DEFAULT_LAYOUT.id);
+  const [custom, setCustom] = useState({
+    width: String(defaultLayout?.widthMm ?? DEFAULT_LAYOUT.width),
+    height: String(defaultLayout?.heightMm ?? DEFAULT_LAYOUT.height),
+  });
   // A browser that reached the app already knows an address that works, so no setting is needed.
   const [base, setBase] = useState(() => (typeof window === 'undefined' ? '' : window.location.origin));
 

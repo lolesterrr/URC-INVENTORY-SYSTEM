@@ -68,7 +68,7 @@ export interface ReportsResponse {
   };
   dueForReplacement: {
     /** The assumed replacement life per category (years); not a URC-confirmed policy. See PROJECT.md Q13. */
-    policyYears: Partial<Record<string, number>>;
+    policyYears: Partial<Record<string, number | null>>;
     coverage: { evaluable: number; total: number };
     assets: ReplacementRow[];
   };
@@ -80,7 +80,7 @@ export interface ReportsResponse {
 
 export interface ReportsOptions {
   now?: Date;
-  replacementPolicy?: Partial<Record<string, number>>;
+  replacementPolicy?: Partial<Record<string, number | null>>;
   licenceExpiryWarningDays?: number;
 }
 
