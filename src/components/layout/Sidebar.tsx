@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
-import { BarChart3, BellRing, BookOpen, Building2, DatabaseBackup, FileSpreadsheet, LayoutDashboard, ScanLine, User as UserIcon, Users, X } from 'lucide-react';
+import { BarChart3, BellRing, BookOpen, Building2, DatabaseBackup, FileSpreadsheet, LayoutDashboard, ScanLine, Settings as SettingsIcon, User as UserIcon, Users, X } from 'lucide-react';
 import type { Permission, User } from '../../types';
 import urcLogo from '../../assets/images/company_logo.png';
 
-export type AppTab = 'dashboard' | 'inventory' | 'directory' | 'barcode' | 'notifications' | 'reports' | 'users' | 'backups' | 'docs' | 'profile';
+export type AppTab = 'dashboard' | 'inventory' | 'directory' | 'barcode' | 'notifications' | 'reports' | 'users' | 'backups' | 'settings' | 'docs' | 'profile';
 
 interface NavItem {
   id: AppTab;
@@ -30,6 +30,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { id: 'users', label: 'User Accounts', icon: Users, permission: 'users:manage' },
       { id: 'backups', label: 'Backups', icon: DatabaseBackup, permission: 'backups:manage' },
+      { id: 'settings', label: 'Settings', icon: SettingsIcon, permission: 'settings:manage' },
       { id: 'docs', label: 'Operational User Guide', icon: BookOpen },
     ],
   },
@@ -43,6 +44,7 @@ export default function Sidebar({
   open,
   onNavigate,
   onClose,
+  companyName,
 }: {
   user: User;
   activeTab: AppTab;
@@ -50,6 +52,8 @@ export default function Sidebar({
   open: boolean;
   onNavigate: (tab: AppTab) => void;
   onClose: () => void;
+  /** From Settings; shown under the logo. Falls back to the default while settings are still loading. */
+  companyName?: string;
 }) {
   const initials = user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2);
 
@@ -74,7 +78,7 @@ export default function Sidebar({
               </button>
             )}
           </div>
-          <p className="text-[9px] uppercase tracking-widest text-slate-400 mt-1.5 font-mono">Uganda Railways Corporation</p>
+          <p className="text-[9px] uppercase tracking-widest text-slate-400 mt-1.5 font-mono">{companyName ?? 'Uganda Railways Corporation'}</p>
         </div>
 
         <div className="p-4 flex-1 space-y-6">

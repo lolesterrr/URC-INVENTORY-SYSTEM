@@ -12,7 +12,7 @@ import type { FormContext } from './inventory/FormModal';
 import HardwareForm from './inventory/HardwareForm';
 import { HistoryDialog } from './inventory/HistoryDialog';
 import { ImportDialog } from './inventory/ImportDialog';
-import { LabelDialog } from './inventory/LabelDialog';
+import { LabelDialog, type DefaultLabelLayout } from './inventory/LabelDialog';
 import InventoryToolbar from './inventory/InventoryToolbar';
 import { LifecycleDialog } from './inventory/LifecycleDialog';
 import {
@@ -54,6 +54,8 @@ interface InventoryTablesProps {
   setSelectedSubTab: (tab: InventoryTab) => void;
   /** An asset ID from a scanned label (`?asset=`); the register opens filtered to it. */
   focusAssetId?: string | null;
+  /** Starting label size from Settings, so the print dialog doesn't always open at the built-in default. */
+  defaultLabel?: DefaultLabelLayout;
 }
 
 type Dialog =
@@ -70,7 +72,7 @@ type Dialog =
   | { kind: 'checkin'; item: HardwareAsset };
 
 export default function InventoryTables(props: InventoryTablesProps) {
-  const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, warrantyWarningDays, selectedSubTab: tab } = props;
+  const { hardware, software, serverComponents, directory, currentUserRole, permissions, username, warrantyWarningDays, defaultLabel, selectedSubTab: tab } = props;
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [group, setGroup] = useState<HardwareGroup>('All');
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -158,7 +160,7 @@ export default function InventoryTables(props: InventoryTablesProps) {
         );
       }
       case 'labels':
-        return <LabelDialog assets={dialog.assets} onClose={close} />;
+        return <LabelDialog assets={dialog.assets} onClose={close} defaultLayout={defaultLabel} />;
       case 'import':
         return <ImportDialog onPreview={props.onPreviewImport} onImport={props.onImportHardware} onClose={close} />;
       case 'lifecycle':

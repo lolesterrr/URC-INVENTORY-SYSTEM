@@ -77,7 +77,7 @@ export function replacementStatus(
   category: string,
   purchaseDate: string,
   now: Date = new Date(),
-  policy: Partial<Record<string, number>> = DEFAULT_REPLACEMENT_LIFE_YEARS,
+  policy: Partial<Record<string, number | null>> = DEFAULT_REPLACEMENT_LIFE_YEARS,
 ): ReplacementStatus {
   const policyYears = policy[category] ?? null;
   const ageYears = ageInYears(purchaseDate, now);

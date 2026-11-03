@@ -12,6 +12,7 @@ import { alertsRouter } from './routes/alerts';
 import { analyticsRouter, auditLogsRouter, reportsRouter } from './routes/reports';
 import { backupsRouter } from './routes/backups';
 import { departmentsRouter, locationsRouter, staffRouter } from './routes/directory';
+import { settingsRouter } from './routes/settings';
 import type { BackupService } from './services/backup';
 import { DEFAULT_WARRANTY_WARNING_DAYS } from '../shared/purchase';
 
@@ -73,6 +74,7 @@ export function createApp(db: DB, opts: AppOptions) {
   api.use('/locations', locationsRouter(db));
   api.use('/staff', staffRouter(db));
   api.use('/alerts', alertsRouter(db, warrantyWarningDays));
+  api.use('/settings', settingsRouter(db));
   api.use('/audit-logs', auditLogsRouter(db));
   api.use('/analytics', analyticsRouter(db, warrantyWarningDays));
   api.use('/reports', reportsRouter(db));

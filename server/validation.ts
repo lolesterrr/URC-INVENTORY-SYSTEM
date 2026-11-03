@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { INITIAL_STATES, LIFECYCLE_STATES } from '../shared/lifecycle';
 import { isPurchaseDate } from '../shared/purchase';
+import { LABEL_PRESET_IDS } from '../shared/labels';
 
 const text = (max = 200) => z.string().trim().max(max);
 const count = z.coerce.number().int().min(0).max(1_000_000);
@@ -131,6 +132,20 @@ export const staffInput = z.object({
   departmentId: refId.optional().default(null),
 });
 export const staffUpdate = z.object({ fullName: text(200).min(1, 'Full name is required'), staffNumber: text(50), departmentId: refId }).partial();
+
+const replacementLifeYears = z.union([z.number().int().min(1).max(50), z.null()]);
+
+export const settingsUpdate = z
+  .object({
+    companyName: text(200).min(1, 'Company name is required'),
+    defaultLabelPreset: z.enum([...LABEL_PRESET_IDS, 'custom']),
+    defaultLabelWidthMm: z.union([z.number().positive().max(500), z.null()]),
+    defaultLabelHeightMm: z.union([z.number().positive().max(500), z.null()]),
+    // Keyed by hardware category; checked against HARDWARE_CATEGORIES by the route, not here, so an
+    // unknown key gets a specific error rather than being silently dropped by the schema.
+    replacementPolicy: z.record(z.string(), replacementLifeYears),
+  })
+  .partial();
 
 /** Parses a request body; on failure sends a 400 and returns null. */
 export function parseBody<T extends z.ZodType>(schema: T, body: unknown, res: Response): z.infer<T> | null {

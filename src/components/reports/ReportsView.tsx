@@ -61,6 +61,7 @@ export default function ReportsView() {
   }
 
   const policyText = Object.entries(data.dueForReplacement.policyYears)
+    .filter((entry): entry is [string, number] => entry[1] !== null && entry[1] !== undefined)
     .map(([category, years]) => `${category} ${years}y`)
     .join(', ');
 

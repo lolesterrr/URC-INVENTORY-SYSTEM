@@ -16,10 +16,12 @@ import BarcodeScanner from './components/BarcodeScanner';
 import DirectoryView from './components/directory/DirectoryView';
 import NotificationCenter from './components/NotificationCenter';
 import ReportsView from './components/reports/ReportsView';
+import SettingsView from './components/SettingsView';
 import HelpGuide from './components/HelpGuide';
 import UserManagement from './components/UserManagement';
 import BackupManagement from './components/BackupManagement';
 import ProfileView from './components/ProfileView';
+import { useSettings } from './hooks/useSettings';
 
 interface MainAppProps {
   currentUser: User;
@@ -41,6 +43,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
   const data = useInventoryData();
   const { actions } = data;
   const unreadAlerts = data.alerts.filter(a => a.status === 'unread').length;
+  const settings = useSettings();
 
   // A scanned label opens the app at ?asset=<id>. Wait for the register to load before deciding whether
   // that asset exists, so a slow load is not reported as a missing asset.
@@ -89,7 +92,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
   const resolveAlert = (id: string) => reportErrors(() => actions.resolveAlert(id))();
   const addStaff = (fullName: string) => actions.saveStaff({ fullName, staffNumber: '', departmentId: null });
 
-  const can = (permission: 'users:manage' | 'backups:manage') => currentUser.permissions.includes(permission);
+  const can = (permission: 'users:manage' | 'backups:manage' | 'settings:manage') => currentUser.permissions.includes(permission);
   const noAccess = <div>You do not have access to this page.</div>;
 
   const renderContent = () => {
@@ -144,6 +147,11 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
             selectedSubTab={inventoryTab}
             setSelectedSubTab={setInventoryTab}
             focusAssetId={scannedAssetId}
+            defaultLabel={
+              settings.data
+                ? { preset: settings.data.defaultLabelPreset, widthMm: settings.data.defaultLabelWidthMm, heightMm: settings.data.defaultLabelHeightMm }
+                : undefined
+            }
           />
         );
       case 'directory':
@@ -185,6 +193,8 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
         return can('users:manage') ? <UserManagement currentUserId={currentUser.id} /> : noAccess;
       case 'backups':
         return can('backups:manage') ? <BackupManagement /> : noAccess;
+      case 'settings':
+        return can('settings:manage') ? <SettingsView settings={settings} /> : noAccess;
       case 'docs':
         return <HelpGuide />;
       case 'profile':
@@ -198,6 +208,7 @@ export default function MainApp({ currentUser, onLogout, onUserChanged }: MainAp
         user={currentUser}
         activeTab={activeTab}
         unreadAlerts={unreadAlerts}
+        companyName={settings.data?.companyName}
         open={menuOpen}
         onNavigate={navigate}
         onClose={() => setMenuOpen(false)}

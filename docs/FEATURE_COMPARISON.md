@@ -65,7 +65,7 @@ Legend: ✅ has it · ◐ partial or basic · ❌ missing · — not applicable
 | Staff acceptance of assigned equipment (digital sign-off) | ✅ | ◐ | ❌ | ◐ | ❌ | Later |
 | **Built-in backup and restore** | ✅ | ◐ (plugin) | ✅ | ✅ | ❌ | Must |
 | REST API with tokens | ✅ | ✅ | ✅ | ✅ | ◐ (unauthenticated) | **Must** (authenticated, internal) |
-| Settings UI (company info, logo, label layout) | ✅ | ✅ | ✅ | ✅ | ❌ | Should |
+| Settings UI (company info, logo, label layout) | ✅ | ✅ | ✅ | ✅ | ◐ (T10a; company name, default label size, replacement-life policy — no logo upload yet) | Should |
 
 ## F. Reporting and notifications
 | Feature | Snipe-IT | GLPI | Lansweeper | ManageEngine | **URC today** | Priority |

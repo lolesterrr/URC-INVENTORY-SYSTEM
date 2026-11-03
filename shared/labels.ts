@@ -11,6 +11,10 @@
 /** Query parameter the app reads on load to open one asset. */
 export const ASSET_QUERY_PARAM = 'asset';
 
+/** Ids of the built-in A4 sticker layouts (`src/components/inventory/labelLayout.ts`), plus 'custom'. */
+export const LABEL_PRESET_IDS = ['24', '40', '65'] as const;
+export type LabelPresetId = (typeof LABEL_PRESET_IDS)[number] | 'custom';
+
 /**
  * Strips a base URL back to origin plus path, with no trailing slash, so the payload is as short as
  * possible: a shorter payload means fewer modules and a code that scans from further away.
